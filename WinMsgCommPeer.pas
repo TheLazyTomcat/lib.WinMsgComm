@@ -7,28 +7,39 @@ interface
 uses
   Windows, UtilityWindow, WinMsgComm;
 
+{==============================================================================}
+{------------------------------------------------------------------------------}
+{                               TWinMsgCommPeer                                }
+{------------------------------------------------------------------------------}
+{==============================================================================}
 type
-  TOnPeerEvent = procedure(Sender: TObject; PeerInfo: TWMCConnectionInfo; ConnectionIndex: Integer) of object;
-
   TWinMsgCommPeer = class(TWinMsgCommBase)
   private
-    fOnPeerConnect:     TOnPeerEvent;
-    fOnPeerDisconnect:  TOnPeerEvent;
+    fOnPeerConnect:     TWMCConnectionEvent;
+    fOnPeerDisconnect:  TWMCConnectionEvent;
   protected
     Function ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult; override;
   public
     constructor Create; overload;
-    constructor Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageRegName: String); overload;
+    constructor Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String); overload;
     destructor Destroy; override;
     Function SendMessage(MessageCode, UserCode: Byte; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
   published
-    property OnPeerConnect: TOnPeerEvent read fOnPeerConnect write fOnPeerConnect;
-    property OnPeerDisconnect: TOnPeerEvent read fOnPeerDisconnect write fOnPeerDisconnect;
+    property OnPeerConnect: TWMCConnectionEvent read fOnPeerConnect write fOnPeerConnect;
+    property OnPeerDisconnect: TWMCConnectionEvent read fOnPeerDisconnect write fOnPeerDisconnect;
   end;
 
 implementation
 
-//******************************************************************************
+{==============================================================================}
+{------------------------------------------------------------------------------}
+{                               TWinMsgCommPeer                                }
+{------------------------------------------------------------------------------}
+{==============================================================================}
+
+{==============================================================================}
+{   TWinMsgCommPeer - Protected methods                                        }
+{==============================================================================}
 
 Function TWinMsgCommPeer.ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult;
 var
@@ -51,12 +62,12 @@ case MessageCode of
                         else Result := WMC_RESULT_error;
                       end;
   WMC_PEERONLINE:     begin
+                        Result := WMC_RESULT_ok;
                         New(NewPeer);
                         NewPeer^.ConnectionID := SenderID;
                         NewPeer^.WindowHandle := HWND(Payload);
                         NewPeer^.Transacting := False;
                         Index := AddConnection(NewPeer);
-                        Result := WMC_RESULT_ok;
                         If Assigned(fOnPeerConnect) then fOnPeerConnect(Self,NewPeer^,Index);
                       end;
   WMC_PEEROFFLINE:    begin
@@ -74,7 +85,9 @@ else
 end;
 end;
 
-//==============================================================================
+{==============================================================================}
+{   TWinMsgCommPeer - Public methods                                           }
+{==============================================================================}
 
 constructor TWinMsgCommPeer.Create;
 begin
@@ -83,9 +96,9 @@ end;
 
 //------------------------------------------------------------------------------
 
-constructor TWinMsgCommPeer.Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageRegName: String);
+constructor TWinMsgCommPeer.Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String);
 begin
-inherited Create(Window,Synchronous,MessageRegName);
+inherited Create(Window,Synchronous,MessageName);
 SendMessageTo(HWND_BROADCAST,BuildWParam(ID,WMC_QUERYPEERS,0),lParam(WindowHandle),True);
 SetID(GetFreeID);
 SendMessageToAll(BuildWParam(ID,WMC_PEERONLINE,0),lParam(WindowHandle),False);

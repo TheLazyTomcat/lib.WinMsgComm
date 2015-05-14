@@ -17,62 +17,62 @@ const
   WMC_SendToAll = 0;
 
 {-------------------------------------------------------------------------------
-  p:      message payload (lParam)
-  sync:   message sent synchronously
-  r:      result value (valid only for messages sent synchronously)
-  s:      sender
+  sync    whether the message is sent synchronously (+) or not (-)
+  ret     returned value (Msg.Result)
 
-  nHWND   sender window handle
-  cHWND   client window handle
-  sHWND   server window handle
-  pHWND   peer window handle
-
-  ?       depends on actual settings
-
-  v/i     contains valid return value after successful processing
-  n/a     no action / not defined / not allowed
+  ?       depends on actual settings (Synchronous property), with exception in
+          sending 64bit long values (UInt64,Int64,Double) in 32bit mode, then
+          they are sent using SendData function, and therefore synchronously
+  v/i     returns WMC_RETURN_ok after successful processing (synchronous only)
+  n/a     no action / not defined / not allowed / ignored
+  ID      ID assigned by a server to the client endpoint 
 -------------------------------------------------------------------------------}
 
-  WMC_PING           = $00;         // p: nHWND   sync: +   r: v/i    s: any
+{-------------------------------------|-------- payload (lParam) -------|- sync -|- ret -|- sender -}
 
-  WMC_QUERYSERVER    = $01;         // p: cHWND   sync: -   r: n/a    s: client
-  WMC_SERVERONLINE   = $02;         // p: sHWND   sync: -   r: n/a    s: server
-  WMC_SERVEROFFLINE  = $03;         // p: sHWND   sync: -   r: n/a    s: server
-  WMC_CLIENTONLINE   = $04;         // p: cHWND   sync: +   r: ID     s: client
-  WMC_CLIENTOFFLINE  = $05;         // p: cHWND   sync: -   r: n/a    s: client
-  WMC_ISSERVER       = $06;         // p: n/a     sync: +   r: v/i    s: server
+  WMC_PING           = $00;         // sender HWND                      |   +    |  v/i  |  any
 
-  WMC_QUERYPEERS     = $07;         // p: pHWND   sync: +   r: n/a    s: peer
-  WMC_PEERONLINE     = $08;         // p: pHWND   sync: +   r: n/a    s: peer
-  WMC_PEEROFFLINE    = $09;         // p: pHWND   sync: -   r: n/a    s: peer
+  WMC_QUERYSERVER    = $01;         // client HWND                      |   -    |  n/a  |  client
+  WMC_SERVERONLINE   = $02;         // server HWND                      |   -    |  n/a  |  server
+  WMC_SERVEROFFLINE  = $03;         // server HWND                      |   -    |  n/a  |  server
+  WMC_CLIENTONLINE   = $04;         // client HWND                      |   +    |  ID   |  client
+  WMC_CLIENTOFFLINE  = $05;         // client HWND                      |   -    |  n/a  |  client
+  WMC_ISSERVER       = $06;         // n/a                              |   +    |  v/i  |  server
 
-  WMC_VALUE_BOOL     = $10;         // p: boolean value                   sync: ?   r: n/a    s: any
-  WMC_VALUE_BYTE     = $11;         // p: 8bit unsigned integer value     sync: ?   r: n/a    s: any
-  WMC_VALUE_SHORTINT = $12;         // p: 8bit signed integer value       sync: ?   r: n/a    s: any
-  WMC_VALUE_WORD     = $13;         // p: 16bit unsigned integer value    sync: ?   r: n/a    s: any
-  WMC_VALUE_SMALLINT = $14;         // p: 16bit signed integer value      sync: ?   r: n/a    s: any
-  WMC_VALUE_LONGWORD = $15;         // p: 32bit unsigned integer value    sync: ?   r: n/a    s: any
-  WMC_VALUE_LONGINT  = $16;         // p: 32bit signed integer value      sync: ?   r: n/a    s: any
-  WMC_VALUE_SINGLE   = $17;         // p: 32bit float value               sync: ?   r: n/a    s: any
-  WMC_VALUE_UINT64   = $18;         // p: 64bit unsigned integer value    sync: ?   r: n/a    s: any
-  WMC_VALUE_INT64    = $19;         // p: 64bit signed integer value      sync: ?   r: n/a    s: any
-  WMC_VALUE_DOUBLE   = $1A;         // p: 64bit float value               sync: ?   r: n/a    s: any
+  WMC_QUERYPEERS     = $07;         // peer HWND                        |   +    |  n/a  |  peer
+  WMC_PEERONLINE     = $08;         // peer HWND                        |   +    |  n/a  |  peer
+  WMC_PEEROFFLINE    = $09;         // peer HWND                        |   -    |  n/a  |  peer
 
-  WMC_TRANSACTION_START      = $20; // p: size of sent data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_END_DATA   = $21; // p: checksum            sync: +   r: n/a    s: any
-  WMC_TRANSACTION_END_UINT64 = $22; // -//-
-  WMC_TRANSACTION_END_INT64  = $23; // -//-
-  WMC_TRANSACTION_END_DOUBLE = $24; // -//-
-  WMC_TRANSACTION_END_STRING = $25; // -//-
+  WMC_VALUE_BOOL     = $10;         // boolean value (8bit)             |   ?    |  n/a  |  any
+  WMC_VALUE_BYTE     = $11;         // 8bit unsigned integer value      |   ?    |  n/a  |  any
+  WMC_VALUE_SHORTINT = $12;         // 8bit signed integer value        |   ?    |  n/a  |  any
+  WMC_VALUE_WORD     = $13;         // 16bit unsigned integer value     |   ?    |  n/a  |  any
+  WMC_VALUE_SMALLINT = $14;         // 16bit signed integer value       |   ?    |  n/a  |  any
+  WMC_VALUE_LONGWORD = $15;         // 32bit unsigned integer value     |   ?    |  n/a  |  any
+  WMC_VALUE_LONGINT  = $16;         // 32bit signed integer value       |   ?    |  n/a  |  any
+  WMC_VALUE_SINGLE   = $17;         // 32bit float value                |   ?    |  n/a  |  any
+  WMC_VALUE_UINT64   = $18;         // 64bit unsigned integer value     |   ?    |  n/a  |  any
+  WMC_VALUE_INT64    = $19;         // 64bit signed integer value       |   ?    |  n/a  |  any
+  WMC_VALUE_DOUBLE   = $1A;         // 64bit float value                |   ?    |  n/a  |  any
 
-  WMC_TRANSACTION_BUFF1 = $30; // p: 1 byte of data    sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF2 = $31; // p: 2 bytes of data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF3 = $32; // p: 3 bytes of data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF4 = $33; // p: 4 bytes of data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF5 = $34; // p: 5 bytes of data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF6 = $35; // p: 6 bytes of data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF7 = $36; // p: 7 bytes of data   sync: +   r: v/i    s: any
-  WMC_TRANSACTION_BUFF8 = $37; // p: 8 bytes of data   sync: +   r: v/i    s: any
+  WMC_TRANSACTION_START      = $20; // size of sent data (TWMCSize)     |   +    |  v/i  |  any
+  WMC_TRANSACTION_END_DATA   = $21; // data checksum (TWMCCheckSum)     |   +    |  n/a  |  any
+  WMC_TRANSACTION_END_UINT64 = $22; // data checksum (TWMCCheckSum)     |   +    |  n/a  |  any
+  WMC_TRANSACTION_END_INT64  = $23; // data checksum (TWMCCheckSum)     |   +    |  n/a  |  any
+  WMC_TRANSACTION_END_DOUBLE = $24; // data checksum (TWMCCheckSum)     |   +    |  n/a  |  any
+  WMC_TRANSACTION_END_STRING = $25; // data checksum (TWMCCheckSum)     |   +    |  n/a  |  any
+
+  WMC_TRANSACTION_BUFF1 = $30;      // 1 byte of data                   |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF2 = $31;      // 2 bytes of data                  |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF3 = $32;      // 3 bytes of data                  |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF4 = $33;      // 4 bytes of data                  |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF5 = $34;      // 5 bytes of data                  |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF6 = $35;      // 6 bytes of data                  |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF7 = $36;      // 7 bytes of data                  |   +    |  v/i  |  any
+  WMC_TRANSACTION_BUFF8 = $37;      // 8 bytes of data                  |   +    |  v/i  |  any
+
+{-------------------------------------|-------- payload (lParam) -------|- sync -|- ret -|- sender -}
+
 
 type
 {$IFDEF x64}
@@ -84,12 +84,12 @@ type
 {$IFDEF WMC64}
   TWMCSize     = UInt64;
   TWMCPosition = UInt64;
-  TWMCCheckSum = TCRC32;
 {$ELSE}
   TWMCSize     = LongWord;
   TWMCPosition = LongWord;
-  TWMCCheckSum = TCRC32;
 {$ENDIF}
+
+  TWMCCheckSum = TCRC32;
 
 {$IFNDEF FPC}
   PUTF8Char = ^AnsiChar;
@@ -139,13 +139,14 @@ type
   TWMCValueReceivedEvent = procedure(Sender: TObject; SenderID: TWMCConnectionID; Value: TWMCMultiValue) of object;
   TWMCDataReceivedEvent = procedure(Sender: TObject; SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam) of object;
   TWMCMessageEvent = procedure(var Msg: TMessage; var Handled: Boolean) of object;
+  TWMCConnectionEvent = procedure(Sender: TObject; ConnectionInfo: TWMCConnectionInfo; ConnectionIndex: Integer) of object;
 
-Function BuildWParam(ConnectionID: TWMCConnectionID; MessageCode, UserCode: Byte): wParam;
-Function GetConnectionID(wParam: wParam): TWMCConnectionID;
-Function GetMessageCode(wParam: wParam): Byte;
-Function GetUserCode(wParam: wParam): Byte;
 
-type
+{==============================================================================}
+{------------------------------------------------------------------------------}
+{                               TWinMsgCommBase                                }
+{------------------------------------------------------------------------------}
+{==============================================================================}
   TWinMsgCommBase = class(TObject)
   private
     fID:              TWMCConnectionID;
@@ -214,10 +215,23 @@ type
     property OnMessage: TWMCMessageEvent read fOnMessage write fOnMessage;
   end;
 
+{==============================================================================}
+{   Auxiliary functions                                                        }
+{==============================================================================}
+
+Function BuildWParam(ConnectionID: TWMCConnectionID; MessageCode, UserCode: Byte): wParam;
+Function GetConnectionID(wParam: wParam): TWMCConnectionID;
+Function GetMessageCode(wParam: wParam): Byte;
+Function GetUserCode(wParam: wParam): Byte;  
+
 implementation
 
 uses
   SysUtils;
+
+{==============================================================================}
+{   Auxiliary functions                                                        }
+{==============================================================================}  
 
 Function BuildWParam(ConnectionID: TWMCConnectionID; MessageCode, UserCode: Byte): wParam;
 begin
@@ -252,7 +266,15 @@ begin
 Result := BufferCRC32(OldSum,Value,Bytes);
 end;
 
-//==============================================================================
+{==============================================================================}
+{------------------------------------------------------------------------------}
+{                               TWinMsgCommBase                                }
+{------------------------------------------------------------------------------}
+{==============================================================================}
+
+{==============================================================================}
+{   TWinMsgCommBase - Private methods                                          }
+{==============================================================================}
 
 Function TWinMsgCommBase.GetWindowHandle: HWND;
 begin
@@ -276,7 +298,9 @@ else
   raise Exception.CreateFmt('TWinMsgCommBase.GetConnection: Index (%d) out of bounds.',[Index]);
 end;
 
-//==============================================================================
+{==============================================================================}
+{   TWinMsgCommBase - Protected methods                                        }
+{==============================================================================}
 
 Function TWinMsgCommBase.GetFreeID: TWMCConnectionID;
 
@@ -657,7 +681,9 @@ begin
 Result := SendMessageToAll(wParam,lParam,Synchronous);
 end;
 
-//==============================================================================
+{==============================================================================}
+{   TWinMsgCommBase - Public methods                                           }
+{==============================================================================}
 
 constructor TWinMsgCommBase.Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName);
 begin
