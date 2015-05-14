@@ -36,19 +36,19 @@ var
   Index:    Integer;
 begin
 case MessageCode of
-  WMC_QUERYSERVER:    Result := WMC_InvalidReturnValue;
-  WMC_SERVERONLINE:   Result := WMC_InvalidReturnValue;
-  WMC_SERVEROFFLINE:  Result := WMC_InvalidReturnValue;
-  WMC_CLIENTONLINE:   Result := WMC_InvalidReturnValue;
-  WMC_CLIENTOFFLINE:  Result := WMC_InvalidReturnValue;
-  WMC_ISSERVER:       Result := WMC_InvalidReturnValue;
+  WMC_QUERYSERVER:    Result := WMC_RESULT_error;
+  WMC_SERVERONLINE:   Result := WMC_RESULT_error;
+  WMC_SERVEROFFLINE:  Result := WMC_RESULT_error;
+  WMC_CLIENTONLINE:   Result := WMC_RESULT_error;
+  WMC_CLIENTOFFLINE:  Result := WMC_RESULT_error;
+  WMC_ISSERVER:       Result := WMC_RESULT_error;
   WMC_QUERYPEERS:     begin
                         If HWND(Payload) <> WindowHandle then
                           begin
                             SendMessageTo(HWND(Payload),BuildWParam(ID,WMC_PEERONLINE,0),lParam(WindowHandle),True);
-                            Result := WMC_ValidReturnValue;
+                            Result := WMC_RESULT_ok;
                           end
-                        else Result := WMC_InvalidReturnValue;
+                        else Result := WMC_RESULT_error;
                       end;
   WMC_PEERONLINE:     begin
                         New(NewPeer);
@@ -56,7 +56,7 @@ case MessageCode of
                         NewPeer^.WindowHandle := HWND(Payload);
                         NewPeer^.Transacting := False;
                         Index := AddConnection(NewPeer);
-                        Result := WMC_ValidReturnValue;
+                        Result := WMC_RESULT_ok;
                         If Assigned(fOnPeerConnect) then fOnPeerConnect(Self,NewPeer^,Index);
                       end;
   WMC_PEEROFFLINE:    begin
@@ -65,9 +65,9 @@ case MessageCode of
                           begin
                             If Assigned(fOnPeerDisconnect) then fOnPeerDisconnect(Self,Connections[Index],Index);
                             DeleteConnection(Index);
-                            Result := WMC_ValidReturnValue;
+                            Result := WMC_RESULT_ok;
                           end
-                        else Result := WMC_InvalidReturnValue;
+                        else Result := WMC_RESULT_error;
                       end;
 else
   Result := inherited ProcessMessage(SenderID,MessageCode,UserCode,Payload);
@@ -113,7 +113,7 @@ else
     If Index >= 0 then
       Result := SendMessageTo(Connections[Index].WindowHandle,BuildWParam(ID,MessageCode,UserCode),Payload)
     else
-      Result := WMC_InvalidReturnValue;
+      Result := WMC_RESULT_error;
   end;
 end;
 
