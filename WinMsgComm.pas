@@ -91,9 +91,7 @@ type
 
   TWMCCheckSum = TCRC32;
 
-{$IFNDEF FPC}
   PUTF8Char = ^AnsiChar;
-{$ENDIF}  
 
   TWMCConnectionID = Word;
 
@@ -178,7 +176,7 @@ type
     Function SendMessageToAll(wParam: wParam; lParam: lParam; Synchronous: Boolean): lResult; overload; virtual;
     Function SendMessageToAll(wParam: wParam; lParam: lParam): lResult; overload; virtual;
   public
-    constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName);
+    constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); virtual;
     destructor Destroy; override;
     procedure ProcessMessages(Synchronous: Boolean); overload; virtual;
     procedure ProcessMessages; overload; virtual;
@@ -373,7 +371,7 @@ Function TWinMsgCommBase.TransactionAdd(var Transaction: TWMCTransactionContext;
 begin
 If Transaction.Position + Bytes <= Transaction.DataSize then
   begin
-    Move(Data,Pointer(PtrUInt(Transaction.DataPtr) + Transaction.Position)^,Bytes);
+    Move(Data,{%H-}Pointer(PtrUInt(Transaction.DataPtr) + Transaction.Position)^,Bytes);
     Transaction.CheckSum := CalcCheckSum(Transaction.CheckSum,Data,Bytes);
     Inc(Transaction.Position,Bytes);
     Result := True;
@@ -495,7 +493,7 @@ var
           mvtWord:      TempValue.WordValue := Word(Payload);
           mvtSmallInt:  TempValue.SmallIntValue := SmallInt(Payload);
           mvtLongWord:  TempValue.LongWordValue := LongWord(Payload);
-          mvtLongInt:   TempValue.LongIntValue := LongWord(Payload);
+          mvtLongInt:   TempValue.LongIntValue := LongInt(Payload);
           mvtSingle:    TempValue.SingleValue := PSingle(@Payload)^;
         {$IFDEF WMC64}
           mvtUInt64:    TempValue.UInt64Value := UInt64(Payload);
@@ -592,7 +590,7 @@ var
 begin
 If Assigned(fOnValueReceived) then
   begin
-    WMCopyData := PCopyDataStruct(Msg.LParam)^;
+    WMCopyData := {%H-}PCopyDataStruct(Msg.LParam)^;
     TempValue.StringValue := '';
     TempValue.UserCode := GetUserCode(wParam(WMCopyData.dwData));
     SenderID := GetConnectionID(wParam(WMCopyData.dwData));
@@ -844,7 +842,7 @@ var
         while (Position + BuffSize) <= Size do
           begin
             Buffer := 0;
-            Move(Pointer(PtrUInt(@Data) + Position)^,Buffer,BuffSize);
+            Move({%H-}Pointer(PtrUInt(@Data) + Position)^,Buffer,BuffSize);
           {$IFDEF WMC64}
             If SendMessageTo(TargetWindow,BuildWParam(fID,WMC_TRANSACTION_BUFF8,UserCode),Buffer,True) <> WMC_RESULT_ok then Exit;
           {$ELSE}
@@ -856,7 +854,7 @@ var
         If (Position < Size) and ((Size - Position) < BuffSize) then
           begin
             Buffer := 0;
-            Move(Pointer(NativeInt(@Data) + Position)^,Buffer,Size - Position);
+            Move({%H-}Pointer(PtrUInt(@Data) + Position)^,Buffer,Size - Position);
             If SendMessageTo(TargetWindow,BuildWParam(fID,WMC_TRANSACTION_BUFF1 + (Size - Position) - 1,UserCode),Buffer,True) <> WMC_RESULT_ok then Exit;
             CheckSum := CalcCheckSum(CheckSum,Buffer,Size - Position);
           end;
@@ -879,14 +877,14 @@ If Size > 0 then
       begin
         Result := fConnections.Count > 0;
         For Index := 0 to Pred(fConnections.Count) do
-          If Windows.SendMessage(PWMCConnectionInfo(fConnections[Index])^.WindowHandle,WM_COPYDATA,wParam(WindowHandle),lParam(@WMCopyData)) = 0 then
+          If Windows.SendMessage(PWMCConnectionInfo(fConnections[Index])^.WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) = 0 then
             Result := False;
       end
     else
       begin
         Index := IndexOfConnection(RecipientID);
         If Index >= 0 then
-          Result := Windows.SendMessage(PWMCConnectionInfo(fConnections[Index])^.WindowHandle,WM_COPYDATA,wParam(WindowHandle),lParam(@WMCopyData)) <> 0;
+          Result := Windows.SendMessage(PWMCConnectionInfo(fConnections[Index])^.WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) <> 0;
       end;
   end;
 {$ELSE}
@@ -903,7 +901,8 @@ If Size > 0 then
     else
       begin
         Index := IndexOfConnection(RecipientID);
-        If Index >= 0 then SendAsTransaction(PWMCConnectionInfo(fConnections[Index])^.WindowHandle);
+        If Index >= 0 then
+            SendAsTransaction(PWMCConnectionInfo(fConnections[Index])^.WindowHandle);
       end;
   end;
 {$ENDIF}  
@@ -914,7 +913,7 @@ end;
 Function TWinMsgCommBase.SendString(const Value: String; RecipientID: TWMCConnectionID = WMC_SendToAll; UserCode: Byte = 0): Boolean;
 {$IFDEF FPC}
 begin
-Result := SendData(PUTF8Char(Value)^,Length(Value),UserCode,RecipientID,WMC_TRANSACTION_END_STRING);
+Result := SendData(PUTF8Char(Value)^,Length(Value),RecipientID,UserCode,WMC_TRANSACTION_END_STRING);
 end;
 {$ELSE}
 var

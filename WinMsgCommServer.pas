@@ -22,8 +22,7 @@ type
     Function ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult; override;
   public
     class Function OtherServerRuning(const MessageName: String): Boolean; virtual;
-    constructor Create; overload;
-    constructor Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String); overload;
+    constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); override;
     destructor Destroy; override;
     Function SendMessage(MessageCode, UserCode: Byte; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
   published
@@ -104,14 +103,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-constructor TWinMsgCommServer.Create;
-begin
-Create(nil,False,WMC_MessageName);
-end;
-
-//------------------------------------------------------------------------------
-
-constructor TWinMsgCommServer.Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String);
+constructor TWinMsgCommServer.Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName);
 begin
 inherited Create(Window,Synchronous,MessageName);
 fControlMutex := CreateMutex(nil,False,PChar(MessageName + '_mutex'));

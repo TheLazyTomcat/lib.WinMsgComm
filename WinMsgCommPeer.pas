@@ -20,8 +20,7 @@ type
   protected
     Function ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult; override;
   public
-    constructor Create; overload;
-    constructor Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String); overload;
+    constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); override;
     destructor Destroy; override;
     Function SendMessage(MessageCode, UserCode: Byte; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
   published
@@ -89,14 +88,7 @@ end;
 {   TWinMsgCommPeer - Public methods                                           }
 {==============================================================================}
 
-constructor TWinMsgCommPeer.Create;
-begin
-Create(nil,False,WMC_MessageName);
-end;
-
-//------------------------------------------------------------------------------
-
-constructor TWinMsgCommPeer.Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String);
+constructor TWinMsgCommPeer.Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName);
 begin
 inherited Create(Window,Synchronous,MessageName);
 SendMessageTo(HWND_BROADCAST,BuildWParam(ID,WMC_QUERYPEERS,0),lParam(WindowHandle),True);

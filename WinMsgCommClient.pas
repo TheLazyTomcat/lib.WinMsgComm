@@ -21,10 +21,9 @@ type
   protected
     Function ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult; override;
   public
-    constructor Create; overload;
-    constructor Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String); overload;
+    constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); override;
     destructor Destroy; override;
-    Function SendMessage(MessageCode, UserCode: Byte; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
+    Function SendMessage(MessageCode, UserCode: Byte; Payload: lParam; {%H-}RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
     Function PingServer: Boolean;
   published
     property ServerOnline: Boolean read GetServerOnline;
@@ -114,13 +113,6 @@ end;
 {==============================================================================}
 {   TWinMsgCommClient - Public methods                                         }
 {==============================================================================}
-
-constructor TWinMsgCommClient.Create;
-begin
-Create(nil,False,WMC_MessageName);
-end;
-
-//------------------------------------------------------------------------------
 
 constructor TWinMsgCommClient.Create(Window: TUtilityWindow; Synchronous: Boolean; const MessageName: String);
 begin
