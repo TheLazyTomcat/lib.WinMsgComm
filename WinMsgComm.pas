@@ -518,7 +518,7 @@ case MessageCode of
   WMC_VALUE_LONGWORD: ProcessValue(mvtLongWord);
   WMC_VALUE_LONGINT:  ProcessValue(mvtLongInt);
   WMC_VALUE_SINGLE:   ProcessValue(mvtSingle);
-{$IFDEF WMC_64bit}
+{$IFDEF WMC64}
   WMC_VALUE_UINT64:   ProcessValue(mvtUInt64);
   WMC_VALUE_INT64:    ProcessValue(mvtInt64);
   WMC_VALUE_DOUBLE:   ProcessValue(mvtDouble);
@@ -811,7 +811,7 @@ end;
 Function TWinMsgCommBase.SendDouble(Value: Double; RecipientID: TWMCConnectionID = WMC_SendToAll; UserCode: Byte = 0): Boolean;
 begin
 {$IFDEF WMC64}
-Result := SendMessage(WMC_VALUE_DOUBLE,UserCode,lParam(Value),RecipientID) = WMC_RESULT_ok;
+Result := SendMessage(WMC_VALUE_DOUBLE,UserCode,lParam(Addr(Value)^),RecipientID) = WMC_RESULT_ok;
 {$ELSE}
 Result := SendData(Value,SizeOf(Value),RecipientID,UserCode,WMC_TRANSACTION_END_DOUBLE);
 {$ENDIF}

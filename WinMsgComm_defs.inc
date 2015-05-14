@@ -1,5 +1,5 @@
 {$DEFINE Allow64bitTransfer}
-{$DEFINE UseWMCopyData}
+{.$DEFINE UseWMCopyData}
 
 {$IFDEF x64}
   {$IFDEF Allow64bitTransfer}
