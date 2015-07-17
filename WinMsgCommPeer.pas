@@ -11,9 +11,9 @@
 
   Peer endpoint class
 
-  ©František Milt 2015-05-14
+  ©František Milt 2015-07-17
 
-  Version 1.0
+  Version 1.1
 
 ===============================================================================}
 unit WinMsgCommPeer;
@@ -109,8 +109,9 @@ end;
 constructor TWinMsgCommPeer.Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName);
 begin
 inherited Create(Window,Synchronous,MessageName);
+InitIDArray;
+SetID(AcquireID);
 SendMessageTo(HWND_BROADCAST,BuildWParam(ID,WMC_QUERYPEERS,0),lParam(WindowHandle),True);
-SetID(GetFreeID);
 SendMessageToAll(BuildWParam(ID,WMC_PEERONLINE,0),lParam(WindowHandle),False);
 end;
 
@@ -119,6 +120,8 @@ end;
 destructor TWinMsgCommPeer.Destroy;
 begin
 SendMessageTo(HWND_BROADCAST,BuildWParam(ID,WMC_PEEROFFLINE,0),lParam(WindowHandle),False);
+ReleaseID(ID);
+FinalIDArray;
 inherited;
 end;
 
@@ -128,7 +131,7 @@ Function TWinMsgCommPeer.SendMessage(MessageCode, UserCode: Byte; Payload: lPara
 var
   Index:  Integer;
 begin
-If RecipientID = 0 then
+If RecipientID = WMC_SendToAll then
   Result := SendMessageToAll(BuildWParam(ID,MessageCode,UserCode),Payload)
 else
   begin

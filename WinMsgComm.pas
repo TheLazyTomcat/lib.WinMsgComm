@@ -11,9 +11,9 @@
 
   Base class
 
-  ©František Milt 2015-05-14
+  ©František Milt 2015-07-17
 
-  Version 1.0
+  Version 1.1
 
 ===============================================================================}
 unit WinMsgComm;
@@ -113,6 +113,9 @@ type
 
   TWMCConnectionID = Word;
 
+  TWMCConnectionIDArray = array[TWMCConnectionID] of Boolean;
+  PWMCConnectionIDArray = ^TWMCConnectionIDArray;
+
   TWMCMultiValueType = (mvtBool,mvtByte,mvtShortInt,mvtWord,mvtSmallInt,
                         mvtLongWord,mvtLongInt,mvtUInt64,mvtInt64,mvtSingle,
                         mvtDouble,mvtData,mvtString);
@@ -157,7 +160,6 @@ type
   TWMCMessageEvent = procedure(var Msg: TMessage; var Handled: Boolean) of object;
   TWMCConnectionEvent = procedure(Sender: TObject; ConnectionInfo: TWMCConnectionInfo; ConnectionIndex: Integer) of object;
 
-
 {==============================================================================}
 {------------------------------------------------------------------------------}
 {                               TWinMsgCommBase                                }
@@ -165,13 +167,16 @@ type
 {==============================================================================}
   TWinMsgCommBase = class(TObject)
   private
+    fIDArraySynchro:  THandle;
+    fIDArrayObject:   THandle;
+    fIDArray:         PWMCConnectionIDArray;
     fID:              TWMCConnectionID;
     fMessageName:     String;
     fMessageID:       LongWord;
     fSynchronous:     Boolean;
     fOwnsWindow:      Boolean;
     fWindow:          TUtilityWindow;
-    fConnections:     TList;   
+    fConnections:     TList;
     fOnValueReceived: TWMCValueReceivedEvent;
     fOnDataReceived:  TWMCDataReceivedEvent;
     fOnMessage:       TWMCMessageEvent;
@@ -179,7 +184,10 @@ type
     Function GetConnectionCount: Integer;
     Function GetConnection(Index: Integer): TWMCConnectionInfo;
   protected
-    Function GetFreeID: TWMCConnectionID; virtual;
+    procedure InitIDArray; virtual;
+    procedure FinalIDArray; virtual;
+    Function AcquireID: TWMCConnectionID; virtual;
+    procedure ReleaseID(ConnectionID: TWMCConnectionID); virtual;
     procedure SetID(NewID: TWMCConnectionID); virtual;
     Function AddConnection(ConnectionInfo: PWMCConnectionInfo): Integer; virtual;
     procedure DeleteConnection(Index: Integer); virtual;
@@ -318,25 +326,68 @@ end;
 {   TWinMsgCommBase - Protected methods                                        }
 {==============================================================================}
 
-Function TWinMsgCommBase.GetFreeID: TWMCConnectionID;
-
-  Function IDUsed(ID: Word): Boolean;
-  var
-    i:  Integer;
-  begin
-    Result := False;
-    For i := 0 to Pred(fConnections.Count) do
-      If PWMCConnectionInfo(fConnections[i])^.ConnectionID = ID then
-        begin
-          Result := True;
-          Exit;
-        end;
-  end;
-
+procedure TWinMsgCommBase.InitIDArray;
 begin
-Result := 1;
-while IDUsed(Result) and (Result < $FFFF) do
-  Inc(Result);
+fIDArraySynchro := CreateMutex(nil,False,PChar(fMessageName + '_idsync'));
+If fIDArraySynchro = 0 then
+  raise Exception.CreateFmt('TWinMsgCommBase.Create: Could not create ID-sync mutex (0x%.8x).',[GetLastError]);
+fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,SizeOf(TWMCConnectionIDArray),PChar(fMessageName + '_idarray'));
+If fIDArrayObject = 0 then
+  raise Exception.CreateFmt('TWinMsgCommBase.Create: Could not create ID array (0x%.8x).',[GetLastError]);
+fIDArray := MapViewOfFile(fIDArrayObject,FILE_MAP_ALL_ACCESS,0,0,0);
+If not Assigned(fIDArray) then
+  raise Exception.CreateFmt('TWinMsgCommBase.Create: Could not map ID array (0x%.8x).',[GetLastError]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TWinMsgCommBase.FinalIDArray;
+begin
+UnmapViewOfFile(fIDArray);
+CloseHandle(fIDArrayObject);
+CloseHandle(fIDArraySynchro);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommBase.AcquireID: TWMCConnectionID;
+var
+  i:  Integer;
+begin
+Result := WMC_SendToAll;
+If Assigned(fIDArray) then
+  begin
+    If WaitForSingleObject(fIDArraySynchro,30000) = WAIT_OBJECT_0 then
+      try
+        For i := 1 to High(TWMCConnectionIDArray) do
+          If not fIDArray^[i] then
+            begin
+              fIDArray^[i] := True;
+              Result := TWMCConnectionID(i);
+              Exit;
+            end;
+        raise Exception.Create('TWinMsgCommBase.AcquireID: No free ID found.');
+      finally
+        ReleaseMutex(fIDArraySynchro);
+      end
+    else raise Exception.Create('TWinMsgCommBase.AcquireID: Synchronization failed.');
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TWinMsgCommBase.ReleaseID(ConnectionID: TWMCConnectionID);
+begin
+If Assigned(fIDArray) then
+  begin
+    If WaitForSingleObject(fIDArraySynchro,30000) = WAIT_OBJECT_0 then
+      try
+        fIDArray^[ConnectionID] := False;
+      finally
+        ReleaseMutex(fIDArraySynchro);
+      end
+    else raise Exception.Create('TWinMsgCommBase.AcquireID: Synchronization failed.');
+  end;
 end;
 
 //------------------------------------------------------------------------------
