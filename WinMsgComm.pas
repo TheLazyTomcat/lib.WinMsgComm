@@ -845,7 +845,7 @@ end;
 
 Function TWinMsgCommBase.SendLongInt(Value: LongInt; RecipientID: TWMCConnectionID = WMC_SendToAll; UserCode: Byte = 0): Boolean;
 begin
-Result := SendMessage(WMC_VALUE_LONGINT,UserCode,lParam(Value),RecipientID) = WMC_RESULT_ok;
+Result := SendMessage(WMC_VALUE_LONGINT,UserCode,lParam(Value),RecipientID) <> WMC_RESULT_error;
 end;
 
 //------------------------------------------------------------------------------
