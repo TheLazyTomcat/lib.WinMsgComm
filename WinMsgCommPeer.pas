@@ -11,9 +11,9 @@
 
   Peer endpoint class
 
-  ©František Milt 2015-08-10
+  ©František Milt 2015-12-13
 
-  Version 1.2
+  Version 1.3
 
 ===============================================================================}
 unit WinMsgCommPeer;
@@ -36,11 +36,11 @@ type
     fOnPeerConnect:     TWMCConnectionEvent;
     fOnPeerDisconnect:  TWMCConnectionEvent;
   protected
-    Function ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult; override;
+    Function ProcessMessage(SenderID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam): lResult; override;
   public
     constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); override;
     destructor Destroy; override;
-    Function SendMessage(MessageCode, UserCode: Byte; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
+    Function SendMessage(MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
   published
     property OnPeerConnect: TWMCConnectionEvent read fOnPeerConnect write fOnPeerConnect;
     property OnPeerDisconnect: TWMCConnectionEvent read fOnPeerDisconnect write fOnPeerDisconnect;
@@ -58,7 +58,7 @@ implementation
 {   TWinMsgCommPeer - Protected methods                                        }
 {==============================================================================}
 
-Function TWinMsgCommPeer.ProcessMessage(SenderID: TWMCConnectionID; MessageCode, UserCode: Byte; Payload: lParam): lResult;
+Function TWinMsgCommPeer.ProcessMessage(SenderID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam): lResult;
 var
   NewPeer:  PWMCConnectionInfo;
   Index:    Integer;
@@ -127,7 +127,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TWinMsgCommPeer.SendMessage(MessageCode, UserCode: Byte; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult;
+Function TWinMsgCommPeer.SendMessage(MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult;
 var
   Index:  Integer;
 begin
