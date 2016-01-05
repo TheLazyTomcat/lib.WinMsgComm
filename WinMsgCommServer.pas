@@ -11,9 +11,9 @@
 
   Server endpoint class
 
-  ©František Milt 2015-12-13
+  ©František Milt 2016-01-05
 
-  Version 1.3
+  Version 1.3.1
 
 ===============================================================================}
 unit WinMsgCommServer;

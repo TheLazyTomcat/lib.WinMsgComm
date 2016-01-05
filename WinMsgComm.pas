@@ -11,9 +11,9 @@
 
   Base class
 
-  ©František Milt 2015-12-13
+  ©František Milt 2016-01-05
 
-  Version 1.3
+  Version 1.3.1
 
 ===============================================================================}
 {-------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ interface
 
 uses
   Windows, Messages, Classes,
-  CRC32, UtilityWindow, AuxTypes;
+  CRC32, UtilityWindow, BitVector, AuxTypes;
 
 const
   WMC_MessageName = 'WMC_MsgName_72084D2C-7D6A-4EEE-A1C3-9FA36397075E';
@@ -121,9 +121,6 @@ type
   TWMCMessageCode  = UInt8;
   TWMCUserCode     = UInt8;
 
-  TWMCConnectionIDArray = array[TWMCConnectionID] of Boolean;
-  PWMCConnectionIDArray = ^TWMCConnectionIDArray;
-
   TWMCMultiValueType = (mvtBool,mvtUInt8,mvtInt8,mvtUInt16,mvtInt16,
                         mvtUInt32,mvtInt32,mvtUInt64,mvtInt64,mvtSingle,
                         mvtDouble,mvtData,mvtString);
@@ -177,7 +174,7 @@ type
   private
     fIDArraySynchro:  THandle;
     fIDArrayObject:   THandle;
-    fIDArray:         PWMCConnectionIDArray;
+    fIDArrayMemory:   Pointer;
     fID:              TWMCConnectionID;
     fMessageName:     String;
     fMessageID:       UInt32;
@@ -339,11 +336,11 @@ begin
 fIDArraySynchro := CreateMutex(nil,False,PChar(fMessageName + '_idsync'));
 If fIDArraySynchro = 0 then
   raise Exception.CreateFmt('TWinMsgCommBase.InitIDArray: Could not create ID-sync mutex (0x%.8x).',[GetLastError]);
-fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,SizeOf(TWMCConnectionIDArray),PChar(fMessageName + '_idarray'));
+fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(fMessageName + '_idarray'));
 If fIDArrayObject = 0 then
   raise Exception.CreateFmt('TWinMsgCommBase.InitIDArray: Could not create ID array (0x%.8x).',[GetLastError]);
-fIDArray := MapViewOfFile(fIDArrayObject,FILE_MAP_ALL_ACCESS,0,0,0);
-If not Assigned(fIDArray) then
+fIDArrayMemory := MapViewOfFile(fIDArrayObject,FILE_MAP_ALL_ACCESS,0,0,0);
+If not Assigned(fIDArrayMemory) then
   raise Exception.CreateFmt('TWinMsgCommBase.InitIDArray: Could not map ID array (0x%.8x).',[GetLastError]);
 end;
 
@@ -351,7 +348,7 @@ end;
 
 procedure TWinMsgCommBase.FinalIDArray;
 begin
-UnmapViewOfFile(fIDArray);
+UnmapViewOfFile(fIDArrayMemory);
 CloseHandle(fIDArrayObject);
 CloseHandle(fIDArraySynchro);
 end;
@@ -360,21 +357,26 @@ end;
 
 Function TWinMsgCommBase.AcquireID: TWMCConnectionID;
 var
-  i:  Integer;
+  Index:  Integer;
 begin
 Result := WMC_SendToAll;
-If Assigned(fIDArray) then
+If Assigned(fIDArrayMemory) then
   begin
     If WaitForSingleObject(fIDArraySynchro,30000) = WAIT_OBJECT_0 then
       try
-        For i := 1 to High(TWMCConnectionIDArray) do
-          If not fIDArray^[i] then
-            begin
-              fIDArray^[i] := True;
-              Result := TWMCConnectionID(i);
-              Exit;
-            end;
-        raise Exception.Create('TWinMsgCommBase.AcquireID: No free ID found.');
+        with TBitVectorStatic32.Create(fIdArrayMemory,Succ(High(TWMCConnectionID))) do
+          try
+            Bits[0] := True;
+            Index := FirstClean;
+            If (Index > 0) and (Index <= HighIndex) then
+              begin
+                Bits[Index] := True;
+                Result := TWMCConnectionID(Index);
+              end
+            else raise Exception.Create('TWinMsgCommBase.AcquireID: No free ID found.');
+          finally
+            Free;
+          end;
       finally
         ReleaseMutex(fIDArraySynchro);
       end
@@ -386,11 +388,16 @@ end;
 
 procedure TWinMsgCommBase.ReleaseID(ConnectionID: TWMCConnectionID);
 begin
-If Assigned(fIDArray) then
+If Assigned(fIDArrayMemory) then
   begin
     If WaitForSingleObject(fIDArraySynchro,30000) = WAIT_OBJECT_0 then
       try
-        fIDArray^[ConnectionID] := False;
+        with TBitVectorStatic32.Create(fIdArrayMemory,Succ(High(TWMCConnectionID))) do
+          try
+            Bits[Integer(ConnectionID)] := False;
+          finally
+            Free;
+          end;
       finally
         ReleaseMutex(fIDArraySynchro);
       end
