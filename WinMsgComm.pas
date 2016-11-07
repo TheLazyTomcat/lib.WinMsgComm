@@ -38,9 +38,9 @@
 -------------------------------------------------------------------------------}
 unit WinMsgComm;
 
-interface
-
 {$INCLUDE '.\WinMsgComm_defs.inc'}
+
+interface
 
 uses
   Windows, Messages, Classes,
@@ -257,7 +257,7 @@ implementation
 
 uses
   SysUtils
-  {$IF Defined(FPC) and not Defined(Unicode)}
+  {$IF Defined(FPC) and not Defined(Unicode) and not Defined(BARE_FPC)}
   (*
     If compiler throws error that LazUTF8 unit cannot be found, you have to
     add LazUtils to required packages (Project > Project Inspector).
@@ -341,14 +341,22 @@ end;
 procedure TWinMsgCommBase.InitIDArray;
 begin
 {$IF Defined(FPC) and not Defined(Unicode)}
+{$IFDEF BARE_FPC}
+fIDArraySynchro := CreateMutex(nil,False,PChar(UTF8ToAnsi(fMessageName + '_idsync')));
+{$ELSE}
 fIDArraySynchro := CreateMutex(nil,False,PChar(UTF8ToWinCP(fMessageName + '_idsync')));
+{$ENDIF}
 {$ELSE}
 fIDArraySynchro := CreateMutex(nil,False,PChar(fMessageName + '_idsync'));
 {$IFEND}
 If fIDArraySynchro = 0 then
   raise Exception.CreateFmt('TWinMsgCommBase.InitIDArray: Could not create ID-sync mutex (0x%.8x).',[GetLastError]);
 {$IF Defined(FPC) and not Defined(Unicode)}
+{$IFDEF BARE_FPC}
+fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(UTF8ToAnsi(fMessageName + '_idarray')));
+{$ELSE}
 fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(UTF8ToWinCP(fMessageName + '_idarray')));
+{$ENDIF}
 {$ELSE}
 fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(fMessageName + '_idarray'));
 {$IFEND}
@@ -791,7 +799,11 @@ inherited Create;
 fID := 0;
 fMessageName := MessageName;
 {$IF Defined(FPC) and not Defined(Unicode)}
-fMessageID := RegisterWindowMessage(PChar(UTF8ToWinCP(MessageName))); ;
+{$IFDEF BARE_FPC}
+fMessageID := RegisterWindowMessage(PChar(UTF8ToAnsi(MessageName)));
+{$ELSE}
+fMessageID := RegisterWindowMessage(PChar(UTF8ToWinCP(MessageName)));
+{$ENDIF}
 {$ELSE}
 fMessageID := RegisterWindowMessage(PChar(MessageName));
 {$IFEND}

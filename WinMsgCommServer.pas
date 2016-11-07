@@ -18,9 +18,9 @@
 ===============================================================================}
 unit WinMsgCommServer;
 
-interface
-
 {$INCLUDE '.\WinMsgComm_defs.inc'}
+
+interface
 
 uses
   Windows, UtilityWindow, WinMsgComm;
