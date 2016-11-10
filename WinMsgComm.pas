@@ -15,6 +15,12 @@
 
   Version 1.3.2
 
+  Dependencies:
+    AuxTypes      - github.com/ncs-sniper/Lib.AuxTypes
+    CRC32         - github.com/ncs-sniper/Lib.CRC32
+    UtilityWindow - github.com/ncs-sniper/Lib.UtilityWindow
+    BitVector     - github.com/ncs-sniper/Lib.BitVector 
+
 ===============================================================================}
 {-------------------------------------------------------------------------------
 
