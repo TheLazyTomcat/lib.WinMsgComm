@@ -16,10 +16,13 @@
   Version 1.3.2
 
   Dependencies:
-    AuxTypes      - github.com/ncs-sniper/Lib.AuxTypes
-    CRC32         - github.com/ncs-sniper/Lib.CRC32
-    UtilityWindow - github.com/ncs-sniper/Lib.UtilityWindow
-    BitVector     - github.com/ncs-sniper/Lib.BitVector 
+    AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
+    CRC32          - github.com/ncs-sniper/Lib.CRC32
+    UtilityWindow  - github.com/ncs-sniper/Lib.UtilityWindow
+    MulticastEvent - github.com/ncs-sniper/Lib.MulticastEvent
+    WndAlloc       - github.com/ncs-sniper/Lib.WndAlloc
+    BitVector      - github.com/ncs-sniper/Lib.BitVector
+    BitOps         - github.com/ncs-sniper/Lib.BitOps
 
 ===============================================================================}
 unit WinMsgCommClient;
