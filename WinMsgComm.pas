@@ -11,9 +11,9 @@
 
   Base class
 
-  ©František Milt 2016-03-01
+  ©František Milt 2017-02-27
 
-  Version 1.3.2
+  Version 1.4
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -162,12 +162,15 @@ type
   end;
 
   TWMCConnectionInfo = record
-    ConnectionID: TWMCConnectionID;
+    Valid:        Boolean;
+    ConnectionID: TWMCConnectionID; 
     WindowHandle: HWND;
     Transacting:  Boolean;
     Transaction:  TWMCTransactionContext;
   end;
-  PWMCConnectionInfo = ^TWMCConnectionInfo;
+
+  TWMCConnectionsArray = array[TWMCConnectionID] of TWMCConnectionInfo;
+  TWMCConnectionsList  = array of TWMCConnectionID;
 
   TWMCValueReceivedEvent = procedure(Sender: TObject; SenderID: TWMCConnectionID; Value: TWMCMultiValue) of object;
   TWMCDataReceivedEvent = procedure(Sender: TObject; SenderID: TWMCConnectionID; MessageCode, UserCode: TWMCUserCode; Payload: lParam) of object;
@@ -181,29 +184,30 @@ type
 {==============================================================================}
   TWinMsgCommBase = class(TObject)
   private
-    fIDArraySynchro:  THandle;
-    fIDArrayObject:   THandle;
-    fIDArrayMemory:   Pointer;
-    fID:              TWMCConnectionID;
-    fMessageName:     String;
-    fMessageID:       UInt32;
-    fSynchronous:     Boolean;
-    fOwnsWindow:      Boolean;
-    fWindow:          TUtilityWindow;
-    fConnections:     TList;
-    fOnValueReceived: TWMCValueReceivedEvent;
-    fOnDataReceived:  TWMCDataReceivedEvent;
-    fOnMessage:       TWMCMessageEvent;
+    fIDArraySynchro:    THandle;
+    fIDArrayObject:     THandle;
+    fIDArrayMemory:     Pointer;
+    fID:                TWMCConnectionID;
+    fMessageName:       String;
+    fMessageID:         UInt32;
+    fSynchronous:       Boolean;
+    fOwnsWindow:        Boolean;
+    fWindow:            TUtilityWindow;
+    fConnectionsList:   TWMCConnectionsList;
+    fOnValueReceived:   TWMCValueReceivedEvent;
+    fOnDataReceived:    TWMCDataReceivedEvent;
+    fOnMessage:         TWMCMessageEvent;
     Function GetWindowHandle: HWND;
     Function GetConnectionCount: Integer;
     Function GetConnection(Index: Integer): TWMCConnectionInfo;
   protected
+    fConnectionsArray:  TWMCConnectionsArray;
     procedure InitIDArray; virtual;
     procedure FinalIDArray; virtual;
     Function AcquireID: TWMCConnectionID; virtual;
     procedure ReleaseID(ConnectionID: TWMCConnectionID); virtual;
     procedure SetID(NewID: TWMCConnectionID); virtual;
-    Function AddConnection(ConnectionInfo: PWMCConnectionInfo): Integer; virtual;
+    Function AddConnection(ConnectionInfo: TWMCConnectionInfo): Integer; virtual;
     procedure DeleteConnection(Index: Integer); virtual;
     procedure TransactionStart(var Transaction: TWMCTransactionContext; Size: TWMCSize; SenderID: TWMCConnectionID); virtual;
     Function TransactionAdd(var Transaction: TWMCTransactionContext; Data: lParam; Bytes: UInt8): Boolean; virtual;
@@ -330,17 +334,20 @@ end;
 
 Function TWinMsgCommBase.GetConnectionCount: Integer;
 begin
-Result := fConnections.Count;
+Result := Length(fConnectionsList);
 end;
 
 //------------------------------------------------------------------------------
 
 Function TWinMsgCommBase.GetConnection(Index: Integer): TWMCConnectionInfo;
 begin
-If (Index >= 0) and (Index < fConnections.Count) then
-  Result := PWMCConnectionInfo(fConnections[Index])^
+If (Index >= Low(fConnectionsList)) and (Index <= High(fConnectionsList)) then
+  Result := fConnectionsArray[fConnectionsList[Index]]
 else
   raise Exception.CreateFmt('TWinMsgCommBase.GetConnection: Index (%d) out of bounds.',[Index]);
+If not Result.Valid then
+  raise Exception.CreateFmt('TWinMsgCommBase.GetConnection: Invalid connection #%d (ID %.d).',
+                            [Index,Integer(fConnectionsList[Index])]);
 end;
 
 {==============================================================================}
@@ -446,27 +453,35 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TWinMsgCommBase.AddConnection(ConnectionInfo: PWMCConnectionInfo): Integer;
+Function TWinMsgCommBase.AddConnection(ConnectionInfo: TWMCConnectionInfo): Integer;
 begin
-If IndexOfConnection(ConnectionInfo^.ConnectionID) < 0 then
-  Result := fConnections.Add(ConnectionInfo)
-else
-  Result := -1;
+If IndexOfConnection(ConnectionInfo.ConnectionID) < 0 then
+  begin
+    fConnectionsArray[ConnectionInfo.ConnectionID] := ConnectionInfo;
+    fConnectionsArray[ConnectionInfo.ConnectionID].Valid := True;
+    SetLength(fConnectionsList,Length(fConnectionsList) + 1);
+    Result := High(fConnectionsList);
+    fConnectionsList[Result] := ConnectionInfo.ConnectionID;
+  end
+else Result := -1;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TWinMsgCommBase.DeleteConnection(Index: Integer);
 var
-  TempConnectionInfo: PWMCConnectionInfo;
+  i:  Integer;
 begin
-If (Index >= 0) and (Index < fConnections.Count) then
+If (Index >= Low(fConnectionsList)) and (Index <= High(fConnectionsList)) then
   begin
-    TempConnectionInfo := PWMCConnectionInfo(fConnections[Index]);
-    If TempConnectionInfo^.Transacting then
-      FreeMem(TempConnectionInfo^.Transaction.DataPtr,TempConnectionInfo^.Transaction.DataSize);
-    Dispose(TempConnectionInfo);
-    fConnections.Delete(Index);    
+    with fConnectionsArray[fConnectionsList[Index]] do
+      begin
+        If Transacting then FreeMem(Transaction.DataPtr,Transaction.DataSize);
+        fConnectionsArray[fConnectionsList[Index]].Valid := False;
+      end;
+    For i := Index to Pred(High(fConnectionsList)) do
+       fConnectionsList[i] := fConnectionsList[i + 1];
+    SetLength(fConnectionsList,Length(fConnectionsList) - 1);
   end;
 end;
 
@@ -543,11 +558,11 @@ If Result and Assigned(fOnValueReceived) then
           TempValue.ValueType := mvtString;
           SetLength(TempStr,Transaction.DataSize);
           Move(Transaction.DataPtr^,PUTF8Char(TempStr)^,Transaction.DataSize);
-        {$IFDEF FPC}
-          TempValue.StringValue := TempStr;
-        {$ELSE}
         {$IFDEF Unicode}
           TempValue.StringValue := DecodeUTF8(TempStr);
+        {$ELSE}
+        {$IFDEF FPC}
+          TempValue.StringValue := TempStr;
         {$ELSE}
           TempValue.StringValue := UTF8ToAnsi(TempStr);
         {$ENDIF}
@@ -589,8 +604,6 @@ end;
 //------------------------------------------------------------------------------
 
 Function TWinMsgCommBase.ProcessMessage(SenderID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam): lResult;
-var
-  Index:  Integer;
 
   procedure ProcessValue(ValueType: TWMCMultiValueType);
   var
@@ -641,11 +654,10 @@ case MessageCode of
   WMC_VALUE_DOUBLE: ProcessValue(mvtDouble);
 {$ENDIF}
   WMC_TRANSACTION_START:  begin
-                            Index := IndexOfConnection(SenderID);
-                            If (Index >= 0) and not PWMCConnectionInfo(fConnections[Index])^.Transacting then
+                            If fConnectionsArray[SenderID].Valid and not fConnectionsArray[SenderID].Transacting then
                               begin
-                                TransactionStart(PWMCConnectionInfo(fConnections[Index])^.Transaction,TWMCSize(Payload),SenderID);
-                                PWMCConnectionInfo(fConnections[Index])^.Transacting := True;
+                                TransactionStart(fConnectionsArray[SenderID].Transaction,TWMCSize(Payload),SenderID);
+                                fConnectionsArray[SenderID].Transacting := True;
                                 Result := WMC_RESULT_ok;
                               end
                             else Result := WMC_RESULT_error;
@@ -660,13 +672,12 @@ case MessageCode of
   WMC_TRANSACTION_BUFF2,
   WMC_TRANSACTION_BUFF3,
   WMC_TRANSACTION_BUFF4:  begin
-                            Index := IndexOfConnection(SenderID);
-                            If (Index >= 0) and PWMCConnectionInfo(fConnections[Index])^.Transacting then
+                            If fConnectionsArray[SenderID].Valid and fConnectionsArray[SenderID].Transacting then
                               begin
-                                If not TransactionAdd(PWMCConnectionInfo(fConnections[Index])^.Transaction,Payload,MessageCode - WMC_TRANSACTION_BUFF1 + 1) then
+                                If not TransactionAdd(fConnectionsArray[SenderID].Transaction,Payload,MessageCode - WMC_TRANSACTION_BUFF1 + 1) then
                                   begin
-                                    TransactionEnd(PWMCConnectionInfo(fConnections[Index])^.Transaction,not PWMCConnectionInfo(fConnections[Index])^.Transaction.CheckSum,MessageCode,UserCode);
-                                    PWMCConnectionInfo(fConnections[Index])^.Transacting := False;
+                                    TransactionEnd(fConnectionsArray[SenderID].Transaction,not fConnectionsArray[SenderID].Transaction.CheckSum,MessageCode,UserCode);
+                                    fConnectionsArray[SenderID].Transacting := False;
                                     Result := WMC_RESULT_error;
                                   end
                                 else Result := WMC_RESULT_ok;
@@ -679,14 +690,13 @@ case MessageCode of
   WMC_TRANSACTION_END_STRING,
   WMC_TRANSACTION_END_DATA:
                           begin
-                            Index := IndexOfConnection(SenderID);
-                            If (Index >= 0) and PWMCConnectionInfo(fConnections[Index])^.Transacting then
+                            If fConnectionsArray[SenderID].Valid and fConnectionsArray[SenderID].Transacting then
                               begin
-                                If TransactionEnd(PWMCConnectionInfo(fConnections[Index])^.Transaction,TWMCCheckSum(Payload),MessageCode,UserCode) then
+                                If TransactionEnd(fConnectionsArray[SenderID].Transaction,TWMCCheckSum(Payload),MessageCode,UserCode) then
                                   Result := WMC_RESULT_ok
                                 else
                                   Result := WMC_RESULT_error;
-                                PWMCConnectionInfo(fConnections[Index])^.Transacting := False;
+                                fConnectionsArray[SenderID].Transacting := False;
                               end
                             else Result := WMC_RESULT_error;
                           end;
@@ -738,11 +748,11 @@ If Assigned(fOnValueReceived) then
           TempValue.ValueType := mvtString;
           SetLength(TempStr,WMCopyData.cbData);
           Move(WMCopyData.lpData^,PUTF8Char(TempStr)^,WMCopyData.cbData);
-        {$IFDEF FPC}
-          TempValue.StringValue := TempStr;
-        {$ELSE}
         {$IFDEF Unicode}
           TempValue.StringValue := DecodeUTF8(TempStr);
+        {$ELSE}
+        {$IFDEF FPC}
+          TempValue.StringValue := TempStr;
         {$ELSE}
           TempValue.StringValue := UTF8ToAnsi(TempStr);
         {$ENDIF}
@@ -780,13 +790,13 @@ Function TWinMsgCommBase.SendMessageToAll(wParam: wParam; lParam: lParam; Synchr
 var
   i:  Integer;
 begin
-If fConnections.Count > 0 then
+If Length(fConnectionsList) > 0 then
   Result := WMC_RESULT_ok
 else
   Result := WMC_RESULT_error;
-For i := 0 to Pred(fConnections.Count) do
+For i := Low(fConnectionsList) to High(fConnectionsList) do
   begin
-    If SendMessageTo(PWMCConnectionInfo(fConnections[i])^.WindowHandle,wParam,lParam,Synchronous) = WMC_RESULT_error then
+    If SendMessageTo(fConnectionsArray[fConnectionsList[i]].WindowHandle,wParam,lParam,Synchronous) = WMC_RESULT_error then
       Result := WMC_RESULT_error;
   end;
 end;
@@ -795,7 +805,7 @@ end;
 
 Function TWinMsgCommBase.SendMessageToAll(wParam: wParam; lParam: lParam): lResult;
 begin
-Result := SendMessageToAll(wParam,lParam,Synchronous);
+Result := SendMessageToAll(wParam,lParam,fSynchronous);
 end;
 
 {==============================================================================}
@@ -803,6 +813,8 @@ end;
 {==============================================================================}
 
 constructor TWinMsgCommBase.Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName);
+var
+  ID: TWMCConnectionID;
 begin
 inherited Create;
 fID := 0;
@@ -823,17 +835,17 @@ If fOwnsWindow then
 else
   fWindow := Window;
 fWindow.OnMessage.Add(MessagesHandler);
-fConnections := TList.Create;
+FillChar(fConnectionsArray,SizeOf(TWMCConnectionsArray),0);
+For ID := Low(fConnectionsArray) to High(fConnectionsArray) do
+  fConnectionsArray[ID].ConnectionID := ID;
+SetLength(fConnectionsList,0);
 end;
 
 //------------------------------------------------------------------------------
 
 destructor TWinMsgCommBase.Destroy;
-var
-  i:  Integer;
 begin
-For i := Pred(fConnections.Count) downto 0 do DeleteConnection(i);
-fConnections.Free;
+SetLength(fConnectionsList,0);
 If fOwnsWindow then
   fWindow.Free
 else
@@ -852,7 +864,7 @@ end;
 
 procedure TWinMsgCommBase.ProcessMessages;
 begin
-ProcessMessages(Synchronous);
+ProcessMessages(fSynchronous);
 end;
 
 //------------------------------------------------------------------------------
@@ -995,65 +1007,55 @@ var
 begin
 Result := False;
 If Size > 0 then
-{$IFDEF UseWMCopyData}
   begin
+  {$IFDEF UseWMCopyData}
     WMCopyData.dwData := PtrUInt(BuildWParam(fID,MessageCode,UserCode));
     WMCopyData.cbData := DWord(Size);
     WMCopyData.lpData := @Data;
     If RecipientID = WMC_SendToAll then
       begin
-        Result := fConnections.Count > 0;
-        For Index := 0 to Pred(fConnections.Count) do
-          If Windows.SendMessage(PWMCConnectionInfo(fConnections[Index])^.WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) = WMC_RESULT_error then
+        Result := Length(fConnectionsList) > 0;
+        For Index := Low(fConnectionsList) to High(fConnectionsList) do
+          If Windows.SendMessage(fConnectionsArray[fConnectionsList[Index]].WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) = WMC_RESULT_error then
             Result := False;
       end
     else
       begin
-        Index := IndexOfConnection(RecipientID);
-        If Index >= 0 then
-          Result := Windows.SendMessage(PWMCConnectionInfo(fConnections[Index])^.WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) <> WMC_RESULT_error;
+        If fConnectionsArray[RecipientID].Valid then
+          Result := Windows.SendMessage(fConnectionsArray[RecipientID].WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) <> WMC_RESULT_error
+        else
+          Result := False;
       end;
-  end;
-{$ELSE}
-  begin
+  {$ELSE}
     If RecipientID = WMC_SendToAll then
       begin
-        Result := fConnections.Count > 0;
-        For Index := 0 to Pred(fConnections.Count) do
-          begin
-            If not SendAsTransaction(PWMCConnectionInfo(fConnections[Index])^.WindowHandle) then
-              Result := False;
-          end;
+        Result := Length(fConnectionsList) > 0;
+        For Index := Low(fConnectionsList) to High(fConnectionsList) do
+          If not SendAsTransaction(fConnectionsArray[fConnectionsList[Index]].WindowHandle) then
+            Result := False;
       end
-    else
-      begin
-        Index := IndexOfConnection(RecipientID);
-        If Index >= 0 then
-          Result := SendAsTransaction(PWMCConnectionInfo(fConnections[Index])^.WindowHandle);
-      end;
+    else Result := SendAsTransaction(fConnectionsArray[RecipientID].WindowHandle);
+  {$ENDIF}
   end;
-{$ENDIF}  
 end;
 
 //------------------------------------------------------------------------------
 
 Function TWinMsgCommBase.SendString(const Value: String; RecipientID: TWMCConnectionID = WMC_SendToAll; UserCode: TWMCUserCode = 0): Boolean;
-{$IFDEF FPC}
-begin
-Result := SendData(PUTF8Char(Value)^,Length(Value),RecipientID,UserCode,WMC_TRANSACTION_END_STRING);
-end;
-{$ELSE}
 var
   TempStr: UTF8String;
 begin
 {$IFDEF Unicode}
-TempStr := UTF8Encode(Value);
+  TempStr := UTF8Encode(Value);
 {$ELSE}
-TempStr := AnsiToUTF8(Value);
+  {$IFDEF FPC}
+  TempStr := Value;
+  {$ELSE}
+  TempStr := AnsiToUTF8(Value);
+  {$ENDIF}
 {$ENDIF}
 Result := SendData(PUTF8Char(TempStr)^,Length(TempStr),RecipientID,UserCode,WMC_TRANSACTION_END_STRING);
 end;
-{$ENDIF}
 
 //------------------------------------------------------------------------------
 
@@ -1076,9 +1078,11 @@ var
   i:  Integer;
 begin
 Result := 0;
-For i := Pred(fConnections.Count) downto 0 do
+For i := High(fConnectionsList) downto Low(fConnectionsList) do
   begin
-    If SendMessageTo(PWMCConnectionInfo(fConnections[i])^.WindowHandle,BuildWParam(0,WMC_PING,0),lParam(WindowHandle),True) = WMC_RESULT_error then
+    If not fConnectionsArray[fConnectionsList[i]].Valid or
+      (SendMessageTo(fConnectionsArray[fConnectionsList[i]].WindowHandle,
+        BuildWParam(0,WMC_PING,0),lParam(WindowHandle),True) <> WMC_RESULT_ok) then
       begin
         Inc(Result);
         DeleteConnection(i);
@@ -1093,8 +1097,8 @@ var
   i:  Integer;
 begin
 Result := -1;
-For i := 0 to Pred(fConnections.Count) do
-  If PWMCConnectionInfo(fConnections[i])^.ConnectionID = ConnectionID then
+For i := Low(fConnectionsList) to High(fConnectionsList) do
+  If fConnectionsList[i] = ConnectionID then
     begin
       Result := i;
       Exit;

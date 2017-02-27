@@ -11,9 +11,9 @@
 
   Client endpoint class
 
-  ©František Milt 2016-03-01
+  ©František Milt 2017-02-27
 
-  Version 1.3.2
+  Version 1.4
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -94,30 +94,26 @@ end;
 
 Function TWinMsgCommClient.ProcessMessage(SenderID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam): lResult;
 var
-  Server:     PWMCConnectionInfo;
-  AssignedID: lResult;
+  Server:     TWMCConnectionInfo;
+  AssignedID: TWMCConnectionID;
 begin
 case MessageCode of
   WMC_QUERYSERVER:    Result := WMC_RESULT_error;
   WMC_SERVERONLINE:   If not ServerOnline then
                         begin
-                          New(Server);
-                          Server^.ConnectionID := 0;
-                          Server^.WindowHandle := HWND(Payload);
-                          Server^.Transacting := False;
-                          AssignedID := SendMessageTo(HWND(Payload),BuildWParam(ID,WMC_CLIENTONLINE,0),lParam(WindowHandle),True);
-                          If (AssignedID > 0) and (AssignedID <= $FFFF) then
+                          Server.Valid := True;
+                          Server.ConnectionID := 0;
+                          Server.WindowHandle := HWND(Payload);
+                          Server.Transacting := False;
+                          AssignedID := TWMCConnectionID(SendMessageTo(HWND(Payload),BuildWParam(ID,WMC_CLIENTONLINE,0),lParam(WindowHandle),True));
+                          If AssignedID > 0 then
                             begin
-                              SetID(TWMCConnectionID(AssignedID));
+                              SetID(AssignedID);
                               AddConnection(Server);
                               If Assigned(fOnServerStatusChange) then fOnServerStatusChange(Self);
                               Result := WMC_RESULT_ok;
                             end
-                          else
-                            begin
-                              Dispose(Server);
-                              Result := WMC_RESULT_error;
-                            end;
+                          else Result := WMC_RESULT_error;
                         end
                       else Result := WMC_RESULT_error;
   WMC_SERVEROFFLINE:  begin

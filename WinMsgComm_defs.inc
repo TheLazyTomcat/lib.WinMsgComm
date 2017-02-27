@@ -33,6 +33,7 @@
   {$MESSAGE FATAL 'Unsupported CPU.'}
 {$ELSE}
   {$DEFINE 32bit}
+  {$UNDEF WMC64}
 {$IFEND}
 
 {$IF not(defined(WINDOWS) or defined(MSWINDOWS))}

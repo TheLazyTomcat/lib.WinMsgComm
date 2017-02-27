@@ -11,9 +11,9 @@
 
   Peer endpoint class
 
-  ©František Milt 2016-03-01
+  ©František Milt 2017-02-27
 
-  Version 1.3.2
+  Version 1.4
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -69,7 +69,7 @@ implementation
 
 Function TWinMsgCommPeer.ProcessMessage(SenderID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam): lResult;
 var
-  NewPeer:  PWMCConnectionInfo;
+  NewPeer:  TWMCConnectionInfo;
   Index:    Integer;
 begin
 case MessageCode of
@@ -89,12 +89,12 @@ case MessageCode of
                       end;
   WMC_PEERONLINE:     begin
                         Result := WMC_RESULT_ok;
-                        New(NewPeer);
-                        NewPeer^.ConnectionID := SenderID;
-                        NewPeer^.WindowHandle := HWND(Payload);
-                        NewPeer^.Transacting := False;
+                        NewPeer.Valid := True;
+                        NewPeer.ConnectionID := SenderID;
+                        NewPeer.WindowHandle := HWND(Payload);
+                        NewPeer.Transacting := False;
                         Index := AddConnection(NewPeer);
-                        If Assigned(fOnPeerConnect) then fOnPeerConnect(Self,NewPeer^,Index);
+                        If Assigned(fOnPeerConnect) then fOnPeerConnect(Self,NewPeer,Index);
                       end;
   WMC_PEEROFFLINE:    begin
                         Index := IndexOfConnection(SenderID);
@@ -137,16 +137,13 @@ end;
 //------------------------------------------------------------------------------
 
 Function TWinMsgCommPeer.SendMessage(MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult;
-var
-  Index:  Integer;
 begin
 If RecipientID = WMC_SendToAll then
   Result := SendMessageToAll(BuildWParam(ID,MessageCode,UserCode),Payload)
 else
   begin
-    Index := IndexOfConnection(RecipientID);
-    If Index >= 0 then
-      Result := SendMessageTo(Connections[Index].WindowHandle,BuildWParam(ID,MessageCode,UserCode),Payload)
+    If fConnectionsArray[RecipientID].Valid then
+      Result := SendMessageTo(fConnectionsArray[RecipientID].WindowHandle,BuildWParam(ID,MessageCode,UserCode),Payload)
     else
       Result := WMC_RESULT_error;
   end;
