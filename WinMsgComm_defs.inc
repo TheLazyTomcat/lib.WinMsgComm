@@ -42,6 +42,6 @@
 
 {$IFDEF FPC}
   {$MODE Delphi}
-  // Activate symbol BARE_FPC if you want to compile this unit outside of Lazarus.
-  {.$DEFINE BARE_FPC}
 {$ENDIF}
+
+{$TYPEINFO ON}

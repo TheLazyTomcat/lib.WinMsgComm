@@ -11,9 +11,9 @@
 
   Base class
 
-  ©František Milt 2017-02-27
+  ©František Milt 2017-07-18
 
-  Version 1.4
+  Version 1.4.1
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -22,7 +22,11 @@
     MulticastEvent - github.com/ncs-sniper/Lib.MulticastEvent
     WndAlloc       - github.com/ncs-sniper/Lib.WndAlloc
     BitVector      - github.com/ncs-sniper/Lib.BitVector
+    StrRect        - github.com/ncs-sniper/Lib.StrRect
     BitOps         - github.com/ncs-sniper/Lib.BitOps
+  * SimpleCPUID    - github.com/ncs-sniper/Lib.SimpleCPUID
+
+  SimpleCPUID might not be needed, see BitOps library for details.
 
 ===============================================================================}
 {-------------------------------------------------------------------------------
@@ -269,14 +273,7 @@ Function GetUserCode(wParam: wParam): TWMCUserCode;
 implementation
 
 uses
-  SysUtils
-  {$IF Defined(FPC) and not Defined(Unicode) and not Defined(BARE_FPC)}
-  (*
-    If compiler throws error that LazUTF8 unit cannot be found, you have to
-    add LazUtils to required packages (Project > Project Inspector).
-  *)
-  , LazUTF8
-  {$IFEND};
+  SysUtils, StrRect;
 
 {==============================================================================}
 {   Auxiliary functions                                                        }
@@ -356,26 +353,10 @@ end;
 
 procedure TWinMsgCommBase.InitIDArray;
 begin
-{$IF Defined(FPC) and not Defined(Unicode)}
-{$IFDEF BARE_FPC}
-fIDArraySynchro := CreateMutex(nil,False,PChar(UTF8ToAnsi(fMessageName + '_idsync')));
-{$ELSE}
-fIDArraySynchro := CreateMutex(nil,False,PChar(UTF8ToWinCP(fMessageName + '_idsync')));
-{$ENDIF}
-{$ELSE}
-fIDArraySynchro := CreateMutex(nil,False,PChar(fMessageName + '_idsync'));
-{$IFEND}
+fIDArraySynchro := CreateMutex(nil,False,PChar(StrToWin(fMessageName + '_idsync')));
 If fIDArraySynchro = 0 then
   raise Exception.CreateFmt('TWinMsgCommBase.InitIDArray: Could not create ID-sync mutex (0x%.8x).',[GetLastError]);
-{$IF Defined(FPC) and not Defined(Unicode)}
-{$IFDEF BARE_FPC}
-fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(UTF8ToAnsi(fMessageName + '_idarray')));
-{$ELSE}
-fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(UTF8ToWinCP(fMessageName + '_idarray')));
-{$ENDIF}
-{$ELSE}
-fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(fMessageName + '_idarray'));
-{$IFEND}
+fIDArrayObject := CreateFileMapping(INVALID_HANDLE_VALUE,nil,PAGE_READWRITE,0,$FFFF div 8,PChar(StrToWin(fMessageName + '_idarray')));
 If fIDArrayObject = 0 then
   raise Exception.CreateFmt('TWinMsgCommBase.InitIDArray: Could not create ID array (0x%.8x).',[GetLastError]);
 fIDArrayMemory := MapViewOfFile(fIDArrayObject,FILE_MAP_ALL_ACCESS,0,0,0);
@@ -558,15 +539,7 @@ If Result and Assigned(fOnValueReceived) then
           TempValue.ValueType := mvtString;
           SetLength(TempStr,Transaction.DataSize);
           Move(Transaction.DataPtr^,PUTF8Char(TempStr)^,Transaction.DataSize);
-        {$IFDEF Unicode}
-          TempValue.StringValue := DecodeUTF8(TempStr);
-        {$ELSE}
-        {$IFDEF FPC}
-          TempValue.StringValue := TempStr;
-        {$ELSE}
-          TempValue.StringValue := UTF8ToAnsi(TempStr);
-        {$ENDIF}
-        {$ENDIF}
+          TempValue.StringValue := UTF8ToStr(TempStr);
           fOnValueReceived(Self,Transaction.SenderID,TempValue);
         end;
     else
@@ -748,15 +721,7 @@ If Assigned(fOnValueReceived) then
           TempValue.ValueType := mvtString;
           SetLength(TempStr,WMCopyData.cbData);
           Move(WMCopyData.lpData^,PUTF8Char(TempStr)^,WMCopyData.cbData);
-        {$IFDEF Unicode}
-          TempValue.StringValue := DecodeUTF8(TempStr);
-        {$ELSE}
-        {$IFDEF FPC}
-          TempValue.StringValue := TempStr;
-        {$ELSE}
-          TempValue.StringValue := UTF8ToAnsi(TempStr);
-        {$ENDIF}
-        {$ENDIF}
+          TempValue.StringValue := UTF8ToStr(TempStr);
           fOnValueReceived(Self,SenderID,TempValue);
         end;
     else
@@ -819,15 +784,7 @@ begin
 inherited Create;
 fID := 0;
 fMessageName := MessageName;
-{$IF Defined(FPC) and not Defined(Unicode)}
-{$IFDEF BARE_FPC}
-fMessageID := RegisterWindowMessage(PChar(UTF8ToAnsi(MessageName)));
-{$ELSE}
-fMessageID := RegisterWindowMessage(PChar(UTF8ToWinCP(MessageName)));
-{$ENDIF}
-{$ELSE}
-fMessageID := RegisterWindowMessage(PChar(MessageName));
-{$IFEND}
+fMessageID := RegisterWindowMessage(PChar(StrToWin(MessageName)));
 fSynchronous := Synchronous;
 fOwnsWindow := not Assigned(Window);
 If fOwnsWindow then
@@ -1045,15 +1002,7 @@ Function TWinMsgCommBase.SendString(const Value: String; RecipientID: TWMCConnec
 var
   TempStr: UTF8String;
 begin
-{$IFDEF Unicode}
-  TempStr := UTF8Encode(Value);
-{$ELSE}
-  {$IFDEF FPC}
-  TempStr := Value;
-  {$ELSE}
-  TempStr := AnsiToUTF8(Value);
-  {$ENDIF}
-{$ENDIF}
+TempStr := StrToUTF8(Value);
 Result := SendData(PUTF8Char(TempStr)^,Length(TempStr),RecipientID,UserCode,WMC_TRANSACTION_END_STRING);
 end;
 

@@ -11,9 +11,9 @@
 
   Client endpoint class
 
-  ©František Milt 2017-02-27
+  ©František Milt 2017-07-18
 
-  Version 1.4
+  Version 1.4.1
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -22,7 +22,11 @@
     MulticastEvent - github.com/ncs-sniper/Lib.MulticastEvent
     WndAlloc       - github.com/ncs-sniper/Lib.WndAlloc
     BitVector      - github.com/ncs-sniper/Lib.BitVector
+    StrRect        - github.com/ncs-sniper/Lib.StrRect
     BitOps         - github.com/ncs-sniper/Lib.BitOps
+  * SimpleCPUID    - github.com/ncs-sniper/Lib.SimpleCPUID
+
+  SimpleCPUID might not be needed, see BitOps library for details.
 
 ===============================================================================}
 unit WinMsgCommClient;
