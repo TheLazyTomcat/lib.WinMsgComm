@@ -275,6 +275,10 @@ implementation
 uses
   SysUtils, StrRect;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+{$ENDIF}
+
 {==============================================================================}
 {   Auxiliary functions                                                        }
 {==============================================================================}  
@@ -483,7 +487,7 @@ Function TWinMsgCommBase.TransactionAdd(var Transaction: TWMCTransactionContext;
 begin
 If Transaction.Position + Bytes <= Transaction.DataSize then
   begin
-    Move(Data,{%H-}Pointer({%H-}PtrUInt(Transaction.DataPtr) + Transaction.Position)^,Bytes);
+    Move(Data,Pointer(PtrUInt(Transaction.DataPtr) + Transaction.Position)^,Bytes);
     Transaction.CheckSum := CalcCheckSum(Transaction.CheckSum,Data,Bytes);
     Inc(Transaction.Position,Bytes);
     Result := True;
@@ -690,7 +694,7 @@ var
 begin
 If Assigned(fOnValueReceived) then
   begin
-    WMCopyData := {%H-}PCopyDataStruct(Msg.LParam)^;
+    WMCopyData := PCopyDataStruct(Msg.LParam)^;
     TempValue.StringValue := '';
     TempValue.UserCode := GetUserCode(wParam(WMCopyData.dwData));
     SenderID := GetConnectionID(wParam(WMCopyData.dwData));
@@ -938,7 +942,7 @@ var
         while (Position + BuffSize) <= Size do
           begin
             Buffer := 0;
-            Move({%H-}Pointer({%H-}PtrUInt(@Data) + Position)^,Buffer,BuffSize);
+            Move(Pointer(PtrUInt(@Data) + Position)^,Buffer,BuffSize);
           {$IFDEF WMC64}
             If SendMessageTo(TargetWindow,BuildWParam(fID,WMC_TRANSACTION_BUFF8,UserCode),Buffer,True) = WMC_RESULT_error then Exit;
           {$ELSE}
@@ -950,7 +954,7 @@ var
         If (Position < Size) and ((Size - Position) < BuffSize) then
           begin
             Buffer := 0;
-            Move({%H-}Pointer({%H-}PtrUInt(@Data) + Position)^,Buffer,Size - Position);
+            Move(Pointer(PtrUInt(@Data) + Position)^,Buffer,Size - Position);
             If SendMessageTo(TargetWindow,BuildWParam(fID,WMC_TRANSACTION_BUFF1 + (Size - Position) - 1,UserCode),Buffer,True) = WMC_RESULT_error then Exit;
             CheckSum := CalcCheckSum(CheckSum,Buffer,Size - Position);
           end;
@@ -973,13 +977,13 @@ If Size > 0 then
       begin
         Result := Length(fConnectionsList) > 0;
         For Index := Low(fConnectionsList) to High(fConnectionsList) do
-          If Windows.SendMessage(fConnectionsArray[fConnectionsList[Index]].WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) = WMC_RESULT_error then
+          If Windows.SendMessage(fConnectionsArray[fConnectionsList[Index]].WindowHandle,WM_COPYDATA,wParam(WindowHandle),lParam(@WMCopyData)) = WMC_RESULT_error then
             Result := False;
       end
     else
       begin
         If fConnectionsArray[RecipientID].Valid then
-          Result := Windows.SendMessage(fConnectionsArray[RecipientID].WindowHandle,WM_COPYDATA,wParam(WindowHandle),{%H-}lParam(@WMCopyData)) <> WMC_RESULT_error
+          Result := Windows.SendMessage(fConnectionsArray[RecipientID].WindowHandle,WM_COPYDATA,wParam(WindowHandle),lParam(@WMCopyData)) <> WMC_RESULT_error
         else
           Result := False;
       end;

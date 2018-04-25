@@ -2,7 +2,7 @@
   When defined, 64bit primitives are sent using one message (otherwise they are
   sent using SendData method) and 64bit buffers can be used in transactions.
 
-  Has meaning anly for Win64 since it requires 64bit long lParam.
+  Has meaning only for Win64 since it requires 64bit long lParam.
 
   Using this option can cause errors when cross-sending between 64bit and 32bit
   applications.
@@ -42,6 +42,7 @@
 
 {$IFDEF FPC}
   {$MODE Delphi}
+  {$DEFINE FPC_DisableWarns}
 {$ENDIF}
 
 {$TYPEINFO ON}

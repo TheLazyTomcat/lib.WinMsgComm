@@ -54,7 +54,7 @@ type
   public
     constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); override;
     destructor Destroy; override;
-    Function SendMessage(MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam; {%H-}RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
+    Function SendMessage(MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
     Function PingServer: Boolean;
   published
     property ServerOnline: Boolean read GetServerOnline;
@@ -66,6 +66,10 @@ implementation
 
 uses
   SysUtils;
+
+{$IFDEF FPC_DisableWarns}
+  {$WARN 5024 OFF} // Parameter "$1" not used
+{$ENDIF}
 
 {==============================================================================}
 {------------------------------------------------------------------------------}
