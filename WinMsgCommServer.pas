@@ -17,6 +17,7 @@
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
+    AuxClasses     - github.com/ncs-sniper/Lib.AuxClasses
     CRC32          - github.com/ncs-sniper/Lib.CRC32
     UtilityWindow  - github.com/ncs-sniper/Lib.UtilityWindow
     MulticastEvent - github.com/ncs-sniper/Lib.MulticastEvent

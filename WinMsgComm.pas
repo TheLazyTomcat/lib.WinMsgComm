@@ -17,6 +17,7 @@
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
+    AuxClasses     - github.com/ncs-sniper/Lib.AuxClasses
     CRC32          - github.com/ncs-sniper/Lib.CRC32
     UtilityWindow  - github.com/ncs-sniper/Lib.UtilityWindow
     MulticastEvent - github.com/ncs-sniper/Lib.MulticastEvent
@@ -57,7 +58,7 @@ interface
 
 uses
   Windows, Messages, Classes,
-  CRC32, UtilityWindow, BitVector, AuxTypes;
+  CRC32, UtilityWindow, BitVector, AuxTypes, AuxClasses;
 
 const
   WMC_MessageName = 'WMC_MsgName_72084D2C-7D6A-4EEE-A1C3-9FA36397075E';
@@ -186,7 +187,7 @@ type
 {                               TWinMsgCommBase                                }
 {------------------------------------------------------------------------------}
 {==============================================================================}
-  TWinMsgCommBase = class(TObject)
+  TWinMsgCommBase = class(TCustomObject)
   private
     fIDArraySynchro:    THandle;
     fIDArrayObject:     THandle;
