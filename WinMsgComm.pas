@@ -277,7 +277,8 @@ uses
   SysUtils, StrRect;
 
 {$IFDEF FPC_DisableWarns}
-  {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+  {$DEFINE FPCDWM}
+  {$DEFINE W4055:={$WARN 4055 OFF}} // Conversion between ordinals and pointers is not portable
 {$ENDIF}
 
 {==============================================================================}
@@ -488,7 +489,9 @@ Function TWinMsgCommBase.TransactionAdd(var Transaction: TWMCTransactionContext;
 begin
 If Transaction.Position + Bytes <= Transaction.DataSize then
   begin
+  {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
     Move(Data,Pointer(PtrUInt(Transaction.DataPtr) + Transaction.Position)^,Bytes);
+  {$IFDEF FPCDWM}{$POP}{$ENDIF}
     Transaction.CheckSum := CalcCheckSum(Transaction.CheckSum,Data,Bytes);
     Inc(Transaction.Position,Bytes);
     Result := True;
@@ -695,7 +698,9 @@ var
 begin
 If Assigned(fOnValueReceived) then
   begin
+  {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
     WMCopyData := PCopyDataStruct(Msg.LParam)^;
+  {$IFDEF FPCDWM}{$POP}{$ENDIF}
     TempValue.StringValue := '';
     TempValue.UserCode := GetUserCode(wParam(WMCopyData.dwData));
     SenderID := GetConnectionID(wParam(WMCopyData.dwData));
@@ -943,7 +948,9 @@ var
         while (Position + BuffSize) <= Size do
           begin
             Buffer := 0;
+          {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
             Move(Pointer(PtrUInt(@Data) + Position)^,Buffer,BuffSize);
+          {$IFDEF FPCDWM}{$POP}{$ENDIF}
           {$IFDEF WMC64}
             If SendMessageTo(TargetWindow,BuildWParam(fID,WMC_TRANSACTION_BUFF8,UserCode),Buffer,True) = WMC_RESULT_error then Exit;
           {$ELSE}
@@ -955,7 +962,9 @@ var
         If (Position < Size) and ((Size - Position) < BuffSize) then
           begin
             Buffer := 0;
+          {$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
             Move(Pointer(PtrUInt(@Data) + Position)^,Buffer,Size - Position);
+          {$IFDEF FPCDWM}{$POP}{$ENDIF}
             If SendMessageTo(TargetWindow,BuildWParam(fID,WMC_TRANSACTION_BUFF1 + (Size - Position) - 1,UserCode),Buffer,True) = WMC_RESULT_error then Exit;
             CheckSum := CalcCheckSum(CheckSum,Buffer,Size - Position);
           end;
