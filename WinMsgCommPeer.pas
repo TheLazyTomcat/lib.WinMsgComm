@@ -11,9 +11,9 @@
 
   Peer endpoint class
 
-  ©František Milt 2017-07-18
+  ©František Milt 2018-10-22
 
-  Version 1.4.1
+  Version 1.4.2
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -55,7 +55,6 @@ type
     constructor Create(Window: TUtilityWindow = nil; Synchronous: Boolean = False; const MessageName: String = WMC_MessageName); override;
     destructor Destroy; override;
     Function SendMessage(MessageCode: TWMCMessageCode; UserCode: TWMCUserCode; Payload: lParam; RecipientID: TWMCConnectionID = WMC_SendToAll): lResult; override;
-  published
     property OnPeerConnect: TWMCConnectionEvent read fOnPeerConnect write fOnPeerConnect;
     property OnPeerDisconnect: TWMCConnectionEvent read fOnPeerDisconnect write fOnPeerDisconnect;
   end;

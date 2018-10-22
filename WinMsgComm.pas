@@ -11,9 +11,9 @@
 
   Base class
 
-  ©František Milt 2017-07-18
+  ©František Milt 2018-10-22
 
-  Version 1.4.1
+  Version 1.4.2
 
   Dependencies:
     AuxTypes       - github.com/ncs-sniper/Lib.AuxTypes
@@ -248,7 +248,6 @@ type
     Function ClearInvalidConnections: Integer; virtual;
     Function IndexOfConnection(ConnectionID: TWMCConnectionID): Integer; virtual;
     property Connections[Index: Integer]: TWMCConnectionInfo read GetConnection; default;
-  published
     property ID: TWMCConnectionID read fID;
     property MessageName: String read fMessageName;
     property MessageID: UInt32 read fMessageID;
@@ -266,10 +265,10 @@ type
 {   Auxiliary functions                                                        }
 {==============================================================================}
 
-Function BuildWParam(ConnectionID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode): wParam;
-Function GetConnectionID(wParam: wParam): TWMCConnectionID;
-Function GetMessageCode(wParam: wParam): TWMCMessageCode;
-Function GetUserCode(wParam: wParam): TWMCUserCode;
+Function BuildWParam(ConnectionID: TWMCConnectionID; MessageCode: TWMCMessageCode; UserCode: TWMCUserCode): wParam;{$IFDEF CanInline} inline; {$ENDIF}
+Function GetConnectionID(wParam: wParam): TWMCConnectionID;{$IFDEF CanInline} inline; {$ENDIF}
+Function GetMessageCode(wParam: wParam): TWMCMessageCode;{$IFDEF CanInline} inline; {$ENDIF}
+Function GetUserCode(wParam: wParam): TWMCUserCode;{$IFDEF CanInline} inline; {$ENDIF}
 
 implementation
 
