@@ -604,7 +604,7 @@ Function TWinMsgCommBase.ProcessMessage(SenderID: TWMCConnectionID; MessageCode:
           mvtUInt32:    TempValue.UInt32Value := UInt32(Payload);
           mvtInt32:     TempValue.Int32Value := Int32(Payload);
           mvtSingle:    TempValue.SingleValue := PSingle(@Payload)^;
-        {$IFDEF 64bit}
+        {$IFDEF CPU64bit}
           mvtUInt64:    TempValue.UInt64Value := UInt64(Payload);
           mvtInt64:     TempValue.Int64Value := Int64(Payload);
           mvtDouble:    TempValue.DoubleValue := PDouble(@Payload)^;
@@ -628,7 +628,7 @@ case MessageCode of
   WMC_VALUE_UINT32: ProcessValue(mvtUInt32);
   WMC_VALUE_INT32:  ProcessValue(mvtInt32);
   WMC_VALUE_SINGLE: ProcessValue(mvtSingle);
-{$IFDEF 64bit}
+{$IFDEF CPU64bit}
   WMC_VALUE_UINT64: ProcessValue(mvtUInt64);
   WMC_VALUE_INT64:  ProcessValue(mvtInt64);
   WMC_VALUE_DOUBLE: ProcessValue(mvtDouble);
@@ -642,7 +642,7 @@ case MessageCode of
                               end
                             else Result := WMC_RESULT_error;
                           end;
-{$IFDEF 64bit}
+{$IFDEF CPU64bit}
   WMC_TRANSACTION_BUFF5,
   WMC_TRANSACTION_BUFF6,
   WMC_TRANSACTION_BUFF7,

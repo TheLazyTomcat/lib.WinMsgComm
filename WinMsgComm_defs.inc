@@ -25,14 +25,14 @@
 {.$DEFINE UseWMCopyData}
 
 {$IF defined(CPU64) or defined(CPU64BITS)}
-  {$DEFINE 64bit}
+  {$DEFINE CPU64bit}
   {$IFDEF Allow64bitTransfer}
     {$DEFINE WMC64}
   {$ENDIF}
 {$ELSEIF defined(CPU16)}
   {$MESSAGE FATAL 'Unsupported CPU.'}
 {$ELSE}
-  {$DEFINE 32bit}
+  {$DEFINE CPU32bit}
   {$UNDEF WMC64}
 {$IFEND}
 
