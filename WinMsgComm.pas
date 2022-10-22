@@ -68,6 +68,7 @@ type
   EWMCIndexOutOfBounds  = class(EWMCException);
   EWMCOutOfResources    = class(EWMCException);  
   EWMCTooMuchData       = class(EWMCException);
+  EWMCServerExists      = class(EWMCException);
 
 {===============================================================================
 --------------------------------------------------------------------------------
@@ -312,24 +313,71 @@ type
 
 {===============================================================================
 --------------------------------------------------------------------------------
+                                TWinMsgCommServer
+--------------------------------------------------------------------------------
+===============================================================================}
+{===============================================================================
+    TWinMsgCommServer - class declaration
+===============================================================================}
+type
+  TWinMsgCommServer = class(TWinMsgComm)
+  protected
+    fInitComplete:  Boolean;
+    Function ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCMessageCode; UserData: TWMCUserData; Payload: TWMCMessagePayload; Sent: Boolean): Boolean; override;
+    procedure Initialize(const DomainName: String{$IFDEF UseWindowsMessages}; ReceivingWindow: TUtilityWindow{$ENDIF}); override;
+    procedure Finalize; override;
+  public
+    class Function ServerPresentOnDomain(const DomainName: String = ''): Boolean; virtual;
+  end;
+
+{===============================================================================
+--------------------------------------------------------------------------------
                                 TWinMsgCommClient
 --------------------------------------------------------------------------------
 ===============================================================================}
 {===============================================================================
     TWinMsgCommClient - class declaration
 ===============================================================================}
-(*
 type
   TWinMsgCommClient = class(TWinMsgComm)
   protected
-    Function GetServerOnline: Boolean; virtual;
-    Function ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCMessageCode; UserData: TWMCUserData; Payload: TWMCMessagePayload): Boolean; override;
+    fServerID:  TWMCConnectionID;
+    Function ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCMessageCode; UserData: TWMCUserData; Payload: TWMCMessagePayload; Sent: Boolean): Boolean; override;
     procedure Initialize(const DomainName: String{$IFDEF UseWindowsMessages}; ReceivingWindow: TUtilityWindow{$ENDIF}); override;
+    procedure Finalize; override;
   public
-    property ServerOnline: Boolean read GetServerOnline;
-    Function SendBoolean(Value: Boolean; UserData: TWMCUserData): Boolean; virtual;
+    Function ServerOnline: Boolean;
+    Function SendBool(Value: Boolean; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostBool(Value: Boolean; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendUInt8(Value: UInt8; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostUInt8(Value: UInt8; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendInt8(Value: Int8; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostInt8(Value: Int8; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendUInt16(Value: UInt16; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostUInt16(Value: UInt16; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendInt16(Value: Int16; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostInt16(Value: Int16; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendUInt32(Value: UInt32; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostUInt32(Value: UInt32; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendInt32(Value: Int32; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostInt32(Value: Int32; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendUInt64(Value: UInt64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostUInt64(Value: UInt64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendInt64(Value: Int64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostInt64(Value: Int64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendInteger(Value: Integer; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostInteger(Value: Integer; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendFloat32(Value: Float32; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostFloat32(Value: Float32; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendFloat64(Value: Float64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostFloat64(Value: Float64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendFloat(Value: Float64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostFloat(Value: Float64; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendString(const Value: String; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostString(const Value: String; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function SendData(const Data; Size: TMemSize; UserData: TWMCUserData = 0): Boolean; reintroduce;
+    Function PostData(const Data; Size: TMemSize; UserData: TWMCUserData = 0): Boolean; reintroduce;
   end;
-*)
 
 implementation
 
@@ -890,7 +938,7 @@ end;
 
 Function TWinMsgComm.ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCMessageCode; UserData: TWMCUserData; Payload: TWMCMessagePayload; Sent: Boolean): Boolean;
 
-  procedure ProcessValue(ValueType: TWMCValueType);
+  Function ProcessValue(ValueType: TWMCValueType): Boolean;
   var
     TempValue:  TWMCValue;
   begin
@@ -919,7 +967,7 @@ Function TWinMsgComm.ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCM
 
 //--  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 
-  procedure ProcessString(Len: TStrSize);
+  Function ProcessString(Len: TStrSize): Boolean;
   var
     TempValue:  TWMCValue;
     TempStr:    UTF8String;
@@ -935,7 +983,7 @@ Function TWinMsgComm.ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCM
 
 //--  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 
-  procedure ProcessData(Size: TMemSize);
+  Function ProcessData(Size: TMemSize): Boolean;
   var
     TempValue:  TWMCValue;
   begin
@@ -952,23 +1000,23 @@ begin
 case MessageCode of
   WMC_MSG_PING:             Result := True;
   
-  WMC_MSG_VAL_BOOL:         ProcessValue(mvtBool);
-  WMC_MSG_VAL_UINT8:        ProcessValue(mvtUInt8);
-  WMC_MSG_VAL_INT8:         ProcessValue(mvtInt8);
-  WMC_MSG_VAL_UINT16:       ProcessValue(mvtUInt16);
-  WMC_MSG_VAL_INT16:        ProcessValue(mvtInt16);
-  WMC_MSG_VAL_UINT32:       ProcessValue(mvtUInt32);
-  WMC_MSG_VAL_INT32:        ProcessValue(mvtInt32);
-  WMC_MSG_VAL_UINT64:       ProcessValue(mvtUInt64);
-  WMC_MSG_VAL_INT64:        ProcessValue(mvtInt64);
-  WMC_MSG_VAL_FLOAT32:      ProcessValue(mvtFloat32);
-  WMC_MSG_VAL_FLOAT64:      ProcessValue(mvtFloat64);
+  WMC_MSG_VAL_BOOL:         Result := ProcessValue(mvtBool);
+  WMC_MSG_VAL_UINT8:        Result := ProcessValue(mvtUInt8);
+  WMC_MSG_VAL_INT8:         Result := ProcessValue(mvtInt8);
+  WMC_MSG_VAL_UINT16:       Result := ProcessValue(mvtUInt16);
+  WMC_MSG_VAL_INT16:        Result := ProcessValue(mvtInt16);
+  WMC_MSG_VAL_UINT32:       Result := ProcessValue(mvtUInt32);
+  WMC_MSG_VAL_INT32:        Result := ProcessValue(mvtInt32);
+  WMC_MSG_VAL_UINT64:       Result := ProcessValue(mvtUInt64);
+  WMC_MSG_VAL_INT64:        Result := ProcessValue(mvtInt64);
+  WMC_MSG_VAL_FLOAT32:      Result := ProcessValue(mvtFloat32);
+  WMC_MSG_VAL_FLOAT64:      Result := ProcessValue(mvtFloat64);
 
   WMC_MSG_STRING0..
-  WMC_MSG_STRING8:          ProcessString(TStrSize(MessageCode - WMC_MSG_STRING0));
+  WMC_MSG_STRING8:          Result := ProcessString(TStrSize(MessageCode - WMC_MSG_STRING0));
 
   WMC_MSG_DATA0..
-  WMC_MSG_DATA8:            ProcessData(TMemSize(MessageCode - WMC_MSG_DATA0));
+  WMC_MSG_DATA8:            Result := ProcessData(TMemSize(MessageCode - WMC_MSG_DATA0));
 
   WMC_MSG_DATA:             Result := ProcessSharedData(Sender,UserData,Payload,Sent);
 
@@ -1111,7 +1159,7 @@ If ConnectionFind(Recipient,Index) then
     If fConnections[Index].Is32bit then
       Result := SendDataRcp(Recipient,MessageCode,UserData,@Payload,SizeOf(Payload))
     else
-      Result := SendMessageRcp(Recipient,TransEndCodeToValCode(MessageCode),UserData,Payload);
+      Result := SendMessageRcp(Recipient,TransactionEndCodeToValueCode(MessageCode),UserData,Payload);
   end
 else Result := False;
 {$ELSE}
@@ -1139,7 +1187,7 @@ If ConnectionFind(Recipient,Index) then
     If fConnections[Index].Is32bit then
       Result := SendDataRcp(Recipient,MessageCode,UserData,@Payload,SizeOf(Payload))
     else
-      Result := PostMessageRcp(Recipient,TransEndCodeToValCode(MessageCode),UserData,Payload);
+      Result := PostMessageRcp(Recipient,TransactionEndCodeToValueCode(MessageCode),UserData,Payload);
   end
 else Result := False;
 {$ELSE}
@@ -1214,7 +1262,7 @@ If SysSendSinglecast(fConnections[Index].SystemID,WMC_MSG_TRANS_START,0,TWMCMess
     CheckSum := InitialCRC32;
     while DataSize > 0 do
       begin
-        BytesToCopy := Min(SendBuffSize,DataSize);
+        BytesToCopy := Min(Int64(SendBuffSize),Int64(DataSize));
         Move(CurrDataPtr^,TempPayload,BytesToCopy);
         If SysSendSinglecast(fConnections[Index].SystemID,WMC_MSG_TRANS_BUFF0 + BytesToCopy,0,TempPayload) <> WMC_MSGRES_OK then
           Exit; // result will be false
@@ -1365,7 +1413,7 @@ begin
 fLargeDataThreshold := 128{bytes};
 fDomainName := AnsiLowerCase(DomainName);
 If Length(fDomainName) > 32 then
-  SetLength(fDomainName,32); 
+  SetLength(fDomainName,32);
 fGlobalDataShrdMem := TSharedMemory.Create(SizeOf(TWMCGlobalData),WMC_NAMEPREFIX_GLBDATA + fDomainName);
 fGlobalDataShrdMem.Lock;
 try
@@ -1410,7 +1458,6 @@ else
 fReceivingWindow.OnMessage.Add(HandleMessage);
 fSystemID := fReceivingWindow.WindowHandle;
 {$ELSE}
-
 {$IFDEF SimpleMessagesNoLimits}
 fMessagesClient := TSimpleMessagesClient.Create(Pred(High(TWMCConnectionID)),High(TWMCConnectionID) * 10,WMC_NAMEPREFIX_MSGNAME + fDomainName);
 {$ELSE}
@@ -1443,7 +1490,8 @@ fOnIncomingValueEvent := nil;
 fOnConnectionCallback := nil;
 fOnConnectionEvent := nil;
 {$IFDEF UseWindowsMessages}
-fReceivingWindow.OnMessage.Remove(HandleMessage);
+If Assigned(fReceivingWindow) then
+  fReceivingWindow.OnMessage.Remove(HandleMessage);
 If fOwnsRecevingWindow then
   fReceivingWindow.Free;
 {$ELSE}
@@ -1479,7 +1527,7 @@ begin
 Result := TMemSize(
 {$IFDEF UseWindowsMessages}
   {$IFDEF CPU64bit}
-    IfThen(ResipientIs32Bit,4,8){64bit windows messages, check recipient bits}
+    IfThen(RecipientIs32Bit,4,8){64bit windows messages, check recipient bits}
   {$ELSE}
     4{32bit windows messages}
   {$ENDIF}
@@ -1903,6 +1951,7 @@ procedure TWinMsgCommPeer.Initialize(const DomainName: String{$IFDEF UseWindowsM
 begin
 inherited Initialize(DomainName{$IFDEF UseWindowsMessages},ReceivingWindow{$ENDIF});
 SysSendBroadcast(WMC_MSG_PEERONLINE,{$IFDEF CPU64bit}0{$ELSE}WMC_USERDATA_FLAG_32BIT{$ENDIF},TWMCMessagePayload(fSystemID));
+Update; // to process all responses to previsou send
 end;
 
 //------------------------------------------------------------------------------
@@ -1913,6 +1962,394 @@ SysPostBroadcast(WMC_MSG_PEEROFFLINE,0,TWMCMessagePayload(fSystemID));
 inherited;
 end;
 
+
+{===============================================================================
+--------------------------------------------------------------------------------
+                                TWinMsgCommServer
+--------------------------------------------------------------------------------
+===============================================================================}
+{===============================================================================
+    TWinMsgCommServer - class implementation
+===============================================================================}
+{-------------------------------------------------------------------------------
+    TWinMsgCommServer - protected methods
+-------------------------------------------------------------------------------}
+
+Function TWinMsgCommServer.ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCMessageCode; UserData: TWMCUserData; Payload: TWMCMessagePayload; Sent: Boolean): Boolean;
+begin
+case MessageCode of
+  WMC_MSG_SERVERONLINE,
+  WMC_MSG_SERVEROFFLINE,
+  WMC_MSG_SERVER:         Result := False;
+  WMC_MSG_CLIENTONLINE:   begin
+                            ConnectionAdd(Sender,WMC_USERDATA_FLAG_32BIT and UserData <> 0,TWMCSystemID(Payload));
+                            SysSendSinglecast(TWMCSystemID(Payload),WMC_MSG_SERVER,
+                                              {$IFDEF CPU64bit}0{$ELSE}WMC_USERDATA_FLAG_32BIT{$ENDIF},
+                                              TWMCMessagePayload(fSystemID));
+                            Result := True;
+                          end;
+  WMC_MSG_CLIENTOFFLINE:  begin
+                            ConnectionRemove(Sender);
+                            Result := True;
+                          end;
+  WMC_MSG_CLIENT:         begin
+                            ConnectionAdd(Sender,WMC_USERDATA_FLAG_32BIT and UserData <> 0,TWMCSystemID(Payload));
+                            Result := True;
+                          end;
+  WMC_MSG_PEERONLINE,
+  WMC_MSG_PEEROFFLINE,
+  WMC_MSG_PEER:           Result := False;
+else
+  Result := inherited ProcessMessage(Sender,MessageCode,UserData,Payload,Sent);
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TWinMsgCommServer.Initialize(const DomainName: String{$IFDEF UseWindowsMessages}; ReceivingWindow: TUtilityWindow{$ENDIF});
+begin
+inherited Initialize(DomainName{$IFDEF UseWindowsMessages},ReceivingWindow{$ENDIF});
+fGlobalDataShrdMem.Lock;
+try
+  If PWMCGlobalData(fGlobalDataShrdMem.Memory)^.Flags and WMC_FLAG_SERVERPRESENT = 0 then
+    begin
+      PWMCGlobalData(fGlobalDataShrdMem.Memory)^.Flags :=
+        PWMCGlobalData(fGlobalDataShrdMem.Memory)^.Flags or WMC_FLAG_SERVERPRESENT;
+      fInitComplete := True;
+    end
+  else raise EWMCServerExists.Create('TWinMsgCommServer.Initialize: Server is already present on this domain.');
+finally
+  fGlobalDataShrdMem.Unlock;
+end;
+SysSendBroadcast(WMC_MSG_SERVERONLINE,{$IFDEF CPU64bit}0{$ELSE}WMC_USERDATA_FLAG_32BIT{$ENDIF},TWMCMessagePayload(fSystemID));
+Update;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TWinMsgCommServer.Finalize;
+begin
+If fInitComplete then
+  begin
+    SysPostBroadcast(WMC_MSG_SERVEROFFLINE,0,TWMCMessagePayload(fSystemID));  
+    fGlobalDataShrdMem.Lock;
+    try
+      PWMCGlobalData(fGlobalDataShrdMem.Memory)^.Flags :=
+        PWMCGlobalData(fGlobalDataShrdMem.Memory)^.Flags and not WMC_FLAG_SERVERPRESENT;
+    finally
+      fGlobalDataShrdMem.Unlock;
+    end;
+  end;
+inherited;
+end;
+
+{-------------------------------------------------------------------------------
+    TWinMsgCommServer - public methods
+-------------------------------------------------------------------------------}
+
+class Function TWinMsgCommServer.ServerPresentOnDomain(const DomainName: String = ''): Boolean;
+var
+  SharedMemory: TSharedMemory;
+begin
+SharedMemory := TSharedMemory.Create(SizeOf(TWMCGlobalData),WMC_NAMEPREFIX_GLBDATA + Copy(AnsiLowerCase(DomainName),1,32));
+try
+  SharedMemory.Lock;
+  try
+    Result := PWMCGlobalData(SharedMemory.Memory)^.Flags and WMC_FLAG_SERVERPRESENT <> 0;
+  finally
+    SharedMemory.Unlock;
+  end;
+finally
+  SharedMemory.Free;
+end;
+end;
+
+
+{===============================================================================
+--------------------------------------------------------------------------------
+                                TWinMsgCommClient
+--------------------------------------------------------------------------------
+===============================================================================}
+{===============================================================================
+    TWinMsgCommClient - class implementation
+===============================================================================}
+{-------------------------------------------------------------------------------
+    TWinMsgCommClient - protected methods
+-------------------------------------------------------------------------------}
+
+Function TWinMsgCommClient.ProcessMessage(Sender: TWMCConnectionID; MessageCode: TWMCMessageCode; UserData: TWMCUserData; Payload: TWMCMessagePayload; Sent: Boolean): Boolean;
+begin
+case MessageCode of
+  WMC_MSG_SERVERONLINE:   If not ServerOnline then
+                            begin
+                              fServerID := Sender;
+                              ConnectionAdd(Sender,WMC_USERDATA_FLAG_32BIT and UserData <> 0,TWMCSystemID(Payload));
+                              SysSendSinglecast(TWMCSystemID(Payload),WMC_MSG_CLIENT,
+                                                {$IFDEF CPU64bit}0{$ELSE}WMC_USERDATA_FLAG_32BIT{$ENDIF},
+                                                TWMCMessagePayload(fSystemID));
+                              Result := True;
+                            end
+                          else Result := False;
+  WMC_MSG_SERVEROFFLINE:  If ServerOnline then
+                            begin
+                              ConnectionRemove(Sender);
+                              Result := True;
+                            end
+                          else Result := False;
+  WMC_MSG_SERVER:         If not ServerOnline then
+                            begin
+                              fServerID := Sender;
+                              ConnectionAdd(Sender,WMC_USERDATA_FLAG_32BIT and UserData <> 0,TWMCSystemID(Payload));
+                              Result := True;
+                            end
+                          else Result := False;
+  WMC_MSG_CLIENTONLINE,
+  WMC_MSG_CLIENTOFFLINE,
+  WMC_MSG_CLIENT,
+  WMC_MSG_PEERONLINE,
+  WMC_MSG_PEEROFFLINE,
+  WMC_MSG_PEER:           Result := False;
+else
+  Result := inherited ProcessMessage(Sender,MessageCode,UserData,Payload,Sent);
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TWinMsgCommClient.Initialize(const DomainName: String{$IFDEF UseWindowsMessages}; ReceivingWindow: TUtilityWindow{$ENDIF});
+begin
+inherited Initialize(DomainName{$IFDEF UseWindowsMessages},ReceivingWindow{$ENDIF});
+fServerID := WMC_BROADCAST;
+SysSendBroadcast(WMC_MSG_CLIENTONLINE,{$IFDEF CPU64bit}0{$ELSE}WMC_USERDATA_FLAG_32BIT{$ENDIF},TWMCMessagePayload(fSystemID));
+Update;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TWinMsgCommClient.Finalize;
+begin
+SysPostBroadcast(WMC_MSG_CLIENTOFFLINE,0,TWMCMessagePayload(fSystemID));
+inherited;
+end;
+
+{-------------------------------------------------------------------------------
+    TWinMsgCommClient - public methods
+-------------------------------------------------------------------------------}
+
+Function TWinMsgCommClient.ServerOnline: Boolean;
+begin
+Result := fConnectionCount > 0; 
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendBool(Value: Boolean; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendBool(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostBool(Value: Boolean; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostBool(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendUInt8(Value: UInt8; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendUInt8(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostUInt8(Value: UInt8; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostUInt8(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendInt8(Value: Int8; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendInt8(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostInt8(Value: Int8; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostInt8(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendUInt16(Value: UInt16; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendUInt16(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostUInt16(Value: UInt16; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostUInt16(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendInt16(Value: Int16; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendInt16(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostInt16(Value: Int16; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostInt16(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendUInt32(Value: UInt32; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendUInt32(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostUInt32(Value: UInt32; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostUInt32(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendInt32(Value: Int32; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendInt32(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostInt32(Value: Int32; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostInt32(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendUInt64(Value: UInt64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendUInt64(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostUInt64(Value: UInt64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostUInt64(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendInt64(Value: Int64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendInt64(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostInt64(Value: Int64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostInt64(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendInteger(Value: Integer; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendInteger(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostInteger(Value: Integer; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostInteger(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendFloat32(Value: Float32; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendFloat32(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostFloat32(Value: Float32; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostFloat32(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendFloat64(Value: Float64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendFloat64(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostFloat64(Value: Float64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostFloat64(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendFloat(Value: Float64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendFloat(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostFloat(Value: Float64; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostFloat(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendString(const Value: String; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendString(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostString(const Value: String; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostString(fServerID,Value,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.SendData(const Data; Size: TMemSize; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited SendData(fServerID,Data,Size,UserData);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TWinMsgCommClient.PostData(const Data; Size: TMemSize; UserData: TWMCUserData = 0): Boolean;
+begin
+Result := Inherited PostData(fServerID,Data,Size,UserData);
+end;
 
 end.
 
