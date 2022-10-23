@@ -1,3 +1,97 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
+{===============================================================================
+
+  WinMsgComm
+
+    Small library for interprocess communication based on Windows message queue
+    system (but also works on Linux). Intended only for exchange of small data
+    and/or for notifications.
+
+    As there is no Windows-like messaging system in Linux (obviously),
+    SimpleMessages library is used there instead. Refer to that library for
+    potential limitations.
+
+      NOTE - SimpleMessages can also be used on Windows OS if you undefine
+             symbol UseWindowsMessages.
+
+    With one exception (see further), it is necessary to repeatedly call method
+    Update, as it manages processing of incoming messages/data and their
+    dispatching to events, and is also responsible for internal workings of the
+    communication. Without this, the communication object might become
+    unresponsive and even block other threads that are communicating with it.
+
+    Only when Windows messaging system is used for communication and when the
+    object is running in a main thread of an GUI application, the message
+    processing and dispatching is done automatically by the Application object.
+
+  Version 2.0 (2022-10-24)
+
+  Last change 2022-10-24
+
+  ©2015-2022 František Milt
+
+  Contacts:
+    František Milt: frantisek.milt@gmail.com
+
+  Support:
+    If you find this code useful, please consider supporting its author(s) by
+    making a small donation using the following link(s):
+
+      https://www.paypal.me/FMilt
+
+  Changelog:
+    For detailed changelog and history please refer to this git repository:
+
+      github.com/TheLazyTomcat/Lib.WinMsgComm
+
+  Dependencies:
+    AuxClasses         - github.com/TheLazyTomcat/Lib.AuxClasses
+    AuxTypes           - github.com/TheLazyTomcat/Lib.AuxTypes
+    BitOps             - github.com/TheLazyTomcat/Lib.BitOps
+    BitVector          - github.com/TheLazyTomcat/Lib.BitVector
+    CRC32              - github.com/TheLazyTomcat/Lib.CRC32
+    HashBase           - github.com/TheLazyTomcat/Lib.HashBase
+    HashBase           - github.com/TheLazyTomcat/Lib.InterlockedOps
+  * LinSyncObjs        - github.com/TheLazyTomcat/Lib.LinSyncObjs
+  * ListSorters        - github.com/TheLazyTomcat/Lib.ListSorters
+  * MemVector          - github.com/TheLazyTomcat/Lib.MemVector
+  * MulticastEvent     - github.com/TheLazyTomcat/Lib.MulticastEvent
+  * NamedSharedItems   - github.com/TheLazyTomcat/Lib.NamedSharedItems
+  * SHA1               - github.com/TheLazyTomcat/Lib.SHA1
+    SharedMemoryStream - github.com/TheLazyTomcat/Lib.SharedMemoryStream
+  * SimpleCPUID        - github.com/TheLazyTomcat/Lib.SimpleCPUID
+  * SimpleFutex        - github.com/TheLazyTomcat/Lib.SimpleFutex
+  * SimpleMessages     - github.com/TheLazyTomcat/Lib.SimpleMessages
+    StaticMemoryStream - github.com/TheLazyTomcat/Lib.StaticMemoryStream
+    StrRect            - github.com/TheLazyTomcat/Lib.StrRect
+  * UInt64Utils        - github.com/TheLazyTomcat/Lib.UInt64Utils
+  * UtilityWindow      - github.com/TheLazyTomcat/Lib.UtilityWindow
+  * WinSyncObjs        - github.com/TheLazyTomcat/Lib.WinSyncObjs
+  * WndAlloc           - github.com/TheLazyTomcat/Lib.WndAlloc
+
+  SimpleCPUID library might not be needed, depending on defined symbols in
+  other libraries.
+
+  Libraries MulticastEvent, UtilityWindow ans WndAlloc are required only when
+  compiling for Windows OS and symbol UseWindowsMessages is defined.
+
+  Libraries UInt64Utils and WinSyncObjs are required only when compiling for
+  Windows OS and symbol UseWindowsMessages is not defined.
+
+  Libraries ListSorters, MemVector, NamedSharedItems, SHA1 and SimpleMessages
+  are required only when compiling for Linux OS or when UseWindowsMessages
+  symbol is not defined.
+
+  Libraries LinSyncObjs and SimpleFutex are required only when compiling for
+  Linux OS.
+
+===============================================================================}
 unit WinMsgComm;
 
 {$IF Defined(CPU64) or Defined(CPU64BITS)}
@@ -34,13 +128,91 @@ unit WinMsgComm;
 {$H+}
 
 //------------------------------------------------------------------------------
+{
+  UseWindowsMessages
 
+  When defined, windows messaging system (SendMessage, GetMessage, ...) is used
+  to send and receive messages whenever it is available - that is, on Windows
+  operating system.
+
+  When not defined, the data are being sent using SimpleMessages library.
+  SimpleMessages is also used when compiling for operating system other than
+  Windows.
+
+  Has no effect when compiling for non-Windows operating systems.
+
+  By default enabled.
+
+  To disable/undefine this symbol in a project without changing this library,
+  define project-wide symbol WinMsgComm_UseWindowsMessages_Off.
+}
 {$DEFINE UseWindowsMessages}
+{$IFDEF WinMsgComm_UseWindowsMessages_Off}
+  {$UNDEF UseWindowsMessages}
+{$ENDIF}
 
-{.$DEFINE ConserveMemory}
+{
+  ConserveMemory
 
-{.$DEFINE SimpleMessagesHigherLimits}
-{.$DEFINE SimpleMessagesNoLimits}
+  Normally, communication objects are using large lookup table to directly
+  translate connection ID to its index in a list of known connections. This
+  table reguires about 256KiB of memory, and such memory consumption for each
+  object migh be undesirable - if so, define this symbol and the table will be
+  omitted.
+
+  But be warned, the memory footprint goes down, but the communication will
+  become slower, especially when large number of endpoints is connected.
+
+  By default undefined.
+
+  To enable/define this symbol in a project without changing this library,
+  define project-wide symbol WinMsgComm_ConserveMemory_On.
+}
+{$UNDEF ConserveMemory}
+{$IFDEF WinMsgComm_ConserveMemory_On}
+  {$DEFINE ConserveMemory}
+{$ENDIF}
+
+{
+  SimpleMessagesHigherLimits
+
+  When SimpleMessages library is used for communication, it is done using its
+  default limits. These limits can be too low for some uses. You can define
+  this symbol in such cases to increase the limits (to 1024 clients and 10240
+  messages).
+
+  Has no effect when Windows messages are used for communication.
+
+  By default undefined.
+
+  To enable/define this symbol in a project without changing this library,
+  define project-wide symbol WinMsgComm_SimpleMessagesHigherLimits_On.
+}
+{$UNDEF SimpleMessagesHigherLimits}
+{$IFDEF WinMsgComm_SimpleMessagesHigherLimits_On}
+  {$DEFINE SimpleMessagesHigherLimits}
+{$ENDIF}
+
+{
+  SimpleMessagesNoLimits
+
+  Similar to SimpleMessagesHigherLimits, but it sets client limit to its
+  technical maximum (65534) and messages limit to 655340.
+  Note that, if both SimpleMessagesHigherLimits and SimpleMessagesNoLimits are
+  defined, then this symbol takes precendence.
+
+    WARNING - when this symbol is defined, then this library allocates over
+              35MiB of global shared memory for each used domain.
+
+  By default undefined.
+
+  To enable/define this symbol in a project without changing this library,
+  define project-wide symbol WinMsgComm_SimpleMessagesNoLimits_On.
+}
+{$UNDEF SimpleMessagesNoLimits}
+{$IFDEF WinMsgComm_SimpleMessagesNoLimits_On}
+  {$DEFINE SimpleMessagesNoLimits}
+{$ENDIF}
 
 //------------------------------------------------------------------------------
 
@@ -1469,7 +1641,6 @@ fMessagesClient := TSimpleMessagesClient.Create(WMC_NAMEPREFIX_MSGNAME + fDomain
 {$ENDIF}
 fMessagesClient.OnMessageEvent := HandleMessage;
 fSystemID := fMessagesClient.ClientID;
-{$message 'do auto processing in gui thread (app on idle)'}
 {$ENDIF}
 // init events
 fOnIncomingValueCallback := nil;
